@@ -1,5 +1,5 @@
 {
-  "name": "react-native-highlight-text",
+  "name": "react-native-highlight-text-view",
   "version": "0.1.0",
   "description": "A native text input for React Native that supports inline text highlighting",
   "main": "./lib/module/index.js",

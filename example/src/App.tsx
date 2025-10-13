@@ -1,5 +1,5 @@
 import { View, StyleSheet } from 'react-native';
-import { HighlightTextView } from 'react-native-highlight-text';
+import { HighlightTextView } from 'react-native-highlight-text-view';
 
 export default function App() {
   return (
