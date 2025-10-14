@@ -73,6 +73,7 @@ using namespace facebook::react;
     CGFloat _paddingTop;
     CGFloat _paddingBottom;
     CGFloat _cornerRadius;
+    BOOL _isUpdatingText;
 }
 
 + (ComponentDescriptorProvider)componentDescriptorProvider
@@ -220,6 +221,20 @@ using namespace facebook::react;
             _layoutManager.paddingBottom = _paddingBottom;
         }
     }
+    
+    if (oldViewProps.text != newViewProps.text) {
+        NSString *text = [[NSString alloc] initWithUTF8String: newViewProps.text.c_str()];
+        if (![_textView.text isEqualToString:text]) {
+            _isUpdatingText = YES;
+            _textView.text = text;
+            [self applyCharacterBackgrounds];
+            _isUpdatingText = NO;
+        }
+    }
+    
+    if (oldViewProps.isEditable != newViewProps.isEditable) {
+        _textView.editable = newViewProps.isEditable;
+    }
 
     [super updateProps:props oldProps:oldProps];
 }
@@ -232,6 +247,14 @@ Class<RCTComponentViewProtocol> HighlightTextViewCls(void)
 - (void)textViewDidChange:(UITextView *)textView
 {
     [self applyCharacterBackgrounds];
+    if (!_isUpdatingText) {
+        if (_eventEmitter != nullptr) {
+            std::dynamic_pointer_cast<const HighlightTextViewEventEmitter>(_eventEmitter)
+                ->onChange(HighlightTextViewEventEmitter::OnChange{
+                    .text = std::string([textView.text UTF8String] ?: "")
+                });
+        }
+    }
 }
 
 - (void)applyCharacterBackgrounds
