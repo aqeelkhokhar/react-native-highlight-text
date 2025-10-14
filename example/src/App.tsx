@@ -1,19 +1,28 @@
+import { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { HighlightTextView } from 'react-native-highlight-text-view';
 
 export default function App() {
+  const [text, setText] = useState('Hello World');
+
   return (
     <View style={styles.container}>
       <HighlightTextView
         color="#00A4A3"
-        textColor="#FFFFFF"
-        textAlign="left"
+        textColor="#000000"
+        textAlign="center"
         fontFamily="Helvetica"
-        fontSize="44"
+        fontSize="32"
         paddingLeft="8"
         paddingRight="8"
         paddingTop="4"
         paddingBottom="4"
+        text={text}
+        isEditable={true}
+        onChange={(e) => {
+          console.log('Text changed:', e.nativeEvent.text);
+          setText(e.nativeEvent.text);
+        }}
         style={styles.textInput}
       />
     </View>
