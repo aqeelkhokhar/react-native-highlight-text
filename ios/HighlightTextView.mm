@@ -147,13 +147,54 @@ using namespace facebook::react;
     
     if (oldViewProps.textAlign != newViewProps.textAlign) {
         NSString *alignment = [[NSString alloc] initWithUTF8String: newViewProps.textAlign.c_str()];
-        if ([alignment isEqualToString:@"center"]) {
-            _textView.textAlignment = NSTextAlignmentCenter;
-        } else if ([alignment isEqualToString:@"right"]) {
-            _textView.textAlignment = NSTextAlignmentRight;
+        
+        // Parse combined alignment (e.g., "top-left", "bottom-center")
+        NSArray *parts = [alignment componentsSeparatedByString:@"-"];
+        NSString *verticalPart = nil;
+        NSString *horizontalPart = nil;
+        
+        if (parts.count == 2) {
+            // Combined format: "top-left", "bottom-center", etc.
+            verticalPart = parts[0];
+            horizontalPart = parts[1];
         } else {
-            _textView.textAlignment = NSTextAlignmentLeft;
+            // Single value - determine if it's horizontal or vertical
+            if ([alignment isEqualToString:@"top"] || [alignment isEqualToString:@"bottom"]) {
+                verticalPart = alignment;
+            } else {
+                horizontalPart = alignment;
+            }
         }
+        
+        // Apply horizontal alignment
+        if (horizontalPart) {
+            if ([horizontalPart isEqualToString:@"center"]) {
+                _textView.textAlignment = NSTextAlignmentCenter;
+            } else if ([horizontalPart isEqualToString:@"right"] || [horizontalPart isEqualToString:@"flex-end"]) {
+                _textView.textAlignment = NSTextAlignmentRight;
+            } else if ([horizontalPart isEqualToString:@"left"] || [horizontalPart isEqualToString:@"flex-start"]) {
+                _textView.textAlignment = NSTextAlignmentLeft;
+            } else if ([horizontalPart isEqualToString:@"justify"]) {
+                _textView.textAlignment = NSTextAlignmentJustified;
+            } else {
+                _textView.textAlignment = NSTextAlignmentLeft;
+            }
+        }
+        
+        // Apply vertical alignment via textContainerInset
+        if ([verticalPart isEqualToString:@"top"]) {
+            _textView.textContainerInset = UIEdgeInsetsMake(10, 10, 0, 10);
+        } else if ([verticalPart isEqualToString:@"bottom"]) {
+            // Calculate bottom alignment by adjusting top inset
+            CGFloat contentHeight = [_textView.layoutManager usedRectForTextContainer:_textView.textContainer].size.height;
+            CGFloat viewHeight = _textView.bounds.size.height;
+            CGFloat topInset = MAX(10, viewHeight - contentHeight - 10);
+            _textView.textContainerInset = UIEdgeInsetsMake(topInset, 10, 10, 10);
+        } else if (!verticalPart) {
+            // Default vertical centering for horizontal-only alignments
+            _textView.textContainerInset = UIEdgeInsetsMake(10, 10, 10, 10);
+        }
+        
         [self applyCharacterBackgrounds]; // Reapply to update alignment
     }
     
@@ -234,6 +275,23 @@ using namespace facebook::react;
     
     if (oldViewProps.isEditable != newViewProps.isEditable) {
         _textView.editable = newViewProps.isEditable;
+    }
+    
+    if (oldViewProps.verticalAlign != newViewProps.verticalAlign) {
+        NSString *verticalAlign = [[NSString alloc] initWithUTF8String: newViewProps.verticalAlign.c_str()];
+        
+        if ([verticalAlign isEqualToString:@"top"]) {
+            _textView.textContainerInset = UIEdgeInsetsMake(10, 10, 0, 10);
+        } else if ([verticalAlign isEqualToString:@"bottom"]) {
+            CGFloat contentHeight = [_textView.layoutManager usedRectForTextContainer:_textView.textContainer].size.height;
+            CGFloat viewHeight = _textView.bounds.size.height;
+            CGFloat topInset = MAX(10, viewHeight - contentHeight - 10);
+            _textView.textContainerInset = UIEdgeInsetsMake(topInset, 10, 10, 10);
+        } else if ([verticalAlign isEqualToString:@"center"] || [verticalAlign isEqualToString:@"middle"]) {
+            _textView.textContainerInset = UIEdgeInsetsMake(10, 10, 10, 10);
+        }
+        
+        [self applyCharacterBackgrounds];
     }
 
     [super updateProps:props oldProps:oldProps];

@@ -10,7 +10,7 @@ export default function App() {
       <HighlightTextView
         color="#00A4A3"
         textColor="#000000"
-        textAlign="center"
+        textAlign="bottom-left"
         fontFamily="Helvetica"
         fontSize="32"
         paddingLeft="8"
