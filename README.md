@@ -61,7 +61,7 @@ export default function App() {
 
 
 **Note:** Vertical alignment is currently supported on iOS only. On Android, text will use default vertical positioning.
-```
+
 
 
 ## Contributing
@@ -70,10 +70,7 @@ export default function App() {
 - [Sending a pull request](CONTRIBUTING.md#sending-a-pull-request)
 - [Code of conduct](CODE_OF_CONDUCT.md)
 
-## License
 
-MIT
-
----
+## License MIT
 
 Made with [create-react-native-library](https://github.com/callstack/react-native-builder-bob)
