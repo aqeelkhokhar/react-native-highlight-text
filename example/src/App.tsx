@@ -32,15 +32,14 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
   },
   textInput: {
     width: '100%',
-    height: 200,
+    height: '100%',
+    backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 8,
+    paddingBottom: 40,
   },
 });

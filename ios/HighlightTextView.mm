@@ -74,6 +74,8 @@ using namespace facebook::react;
     CGFloat _paddingBottom;
     CGFloat _cornerRadius;
     BOOL _isUpdatingText;
+    NSString * _currentVerticalAlignment;
+    NSTextAlignment _currentHorizontalAlignment;
 }
 
 + (ComponentDescriptorProvider)componentDescriptorProvider
@@ -94,6 +96,8 @@ using namespace facebook::react;
     _paddingTop = 4.0;
     _paddingBottom = 4.0;
     _cornerRadius = 4.0;
+    _currentVerticalAlignment = nil;
+    _currentHorizontalAlignment = NSTextAlignmentCenter;
     
     // Create text storage, layout manager, and text container
     NSTextStorage *textStorage = [[NSTextStorage alloc] init];
@@ -126,6 +130,52 @@ using namespace facebook::react;
   }
 
   return self;
+}
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+    
+    // Recalculate vertical alignment after layout
+    if (_currentVerticalAlignment) {
+        [self updateVerticalAlignment:_currentVerticalAlignment];
+    }
+}
+
+- (void)updateVerticalAlignment:(NSString *)verticalAlign
+{
+    if ([verticalAlign isEqualToString:@"top"]) {
+        _textView.textContainerInset = UIEdgeInsetsMake(10, 10, 0, 10);
+    } else if ([verticalAlign isEqualToString:@"bottom"]) {
+        // Force layout to get accurate content height
+        [_textView.layoutManager ensureLayoutForTextContainer:_textView.textContainer];
+        
+        CGFloat contentHeight = [_textView.layoutManager usedRectForTextContainer:_textView.textContainer].size.height;
+        CGFloat viewHeight = _textView.bounds.size.height;
+        
+        // Only apply bottom alignment if we have valid dimensions
+        if (viewHeight > 0 && contentHeight > 0) {
+            if (contentHeight + 20 <= viewHeight) {
+                // Content fits in view - align to bottom with inset
+                CGFloat topInset = MAX(10, viewHeight - contentHeight - 10);
+                _textView.textContainerInset = UIEdgeInsetsMake(topInset, 10, 10, 10);
+            } else {
+                // Content exceeds view - use minimal inset and scroll to bottom
+                _textView.textContainerInset = UIEdgeInsetsMake(10, 10, 10, 10);
+                
+                // Scroll to bottom to show the latest text
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    CGFloat bottomOffset = self->_textView.contentSize.height - self->_textView.bounds.size.height + self->_textView.contentInset.bottom;
+                    if (bottomOffset > 0) {
+                        [self->_textView setContentOffset:CGPointMake(0, bottomOffset) animated:NO];
+                    }
+                });
+            }
+        }
+    } else {
+        // Default or center
+        _textView.textContainerInset = UIEdgeInsetsMake(10, 10, 10, 10);
+    }
 }
 
 - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
@@ -169,29 +219,26 @@ using namespace facebook::react;
         // Apply horizontal alignment
         if (horizontalPart) {
             if ([horizontalPart isEqualToString:@"center"]) {
-                _textView.textAlignment = NSTextAlignmentCenter;
+                _currentHorizontalAlignment = NSTextAlignmentCenter;
             } else if ([horizontalPart isEqualToString:@"right"] || [horizontalPart isEqualToString:@"flex-end"]) {
-                _textView.textAlignment = NSTextAlignmentRight;
+                _currentHorizontalAlignment = NSTextAlignmentRight;
             } else if ([horizontalPart isEqualToString:@"left"] || [horizontalPart isEqualToString:@"flex-start"]) {
-                _textView.textAlignment = NSTextAlignmentLeft;
+                _currentHorizontalAlignment = NSTextAlignmentLeft;
             } else if ([horizontalPart isEqualToString:@"justify"]) {
-                _textView.textAlignment = NSTextAlignmentJustified;
+                _currentHorizontalAlignment = NSTextAlignmentJustified;
             } else {
-                _textView.textAlignment = NSTextAlignmentLeft;
+                _currentHorizontalAlignment = NSTextAlignmentLeft;
             }
+            _textView.textAlignment = _currentHorizontalAlignment;
         }
         
-        // Apply vertical alignment via textContainerInset
-        if ([verticalPart isEqualToString:@"top"]) {
-            _textView.textContainerInset = UIEdgeInsetsMake(10, 10, 0, 10);
-        } else if ([verticalPart isEqualToString:@"bottom"]) {
-            // Calculate bottom alignment by adjusting top inset
-            CGFloat contentHeight = [_textView.layoutManager usedRectForTextContainer:_textView.textContainer].size.height;
-            CGFloat viewHeight = _textView.bounds.size.height;
-            CGFloat topInset = MAX(10, viewHeight - contentHeight - 10);
-            _textView.textContainerInset = UIEdgeInsetsMake(topInset, 10, 10, 10);
-        } else if (!verticalPart) {
+        // Store and apply vertical alignment
+        if (verticalPart) {
+            _currentVerticalAlignment = verticalPart;
+            [self updateVerticalAlignment:verticalPart];
+        } else if (!verticalPart && horizontalPart) {
             // Default vertical centering for horizontal-only alignments
+            _currentVerticalAlignment = nil;
             _textView.textContainerInset = UIEdgeInsetsMake(10, 10, 10, 10);
         }
         
@@ -269,6 +316,12 @@ using namespace facebook::react;
             _isUpdatingText = YES;
             _textView.text = text;
             [self applyCharacterBackgrounds];
+            
+            // Recalculate vertical alignment when text changes
+            if (_currentVerticalAlignment) {
+                [self updateVerticalAlignment:_currentVerticalAlignment];
+            }
+            
             _isUpdatingText = NO;
         }
     }
@@ -279,18 +332,8 @@ using namespace facebook::react;
     
     if (oldViewProps.verticalAlign != newViewProps.verticalAlign) {
         NSString *verticalAlign = [[NSString alloc] initWithUTF8String: newViewProps.verticalAlign.c_str()];
-        
-        if ([verticalAlign isEqualToString:@"top"]) {
-            _textView.textContainerInset = UIEdgeInsetsMake(10, 10, 0, 10);
-        } else if ([verticalAlign isEqualToString:@"bottom"]) {
-            CGFloat contentHeight = [_textView.layoutManager usedRectForTextContainer:_textView.textContainer].size.height;
-            CGFloat viewHeight = _textView.bounds.size.height;
-            CGFloat topInset = MAX(10, viewHeight - contentHeight - 10);
-            _textView.textContainerInset = UIEdgeInsetsMake(topInset, 10, 10, 10);
-        } else if ([verticalAlign isEqualToString:@"center"] || [verticalAlign isEqualToString:@"middle"]) {
-            _textView.textContainerInset = UIEdgeInsetsMake(10, 10, 10, 10);
-        }
-        
+        _currentVerticalAlignment = verticalAlign;
+        [self updateVerticalAlignment:verticalAlign];
         [self applyCharacterBackgrounds];
     }
 
@@ -305,6 +348,12 @@ Class<RCTComponentViewProtocol> HighlightTextViewCls(void)
 - (void)textViewDidChange:(UITextView *)textView
 {
     [self applyCharacterBackgrounds];
+    
+    // Recalculate vertical alignment when text changes
+    if (_currentVerticalAlignment) {
+        [self updateVerticalAlignment:_currentVerticalAlignment];
+    }
+    
     if (!_isUpdatingText) {
         if (_eventEmitter != nullptr) {
             std::dynamic_pointer_cast<const HighlightTextViewEventEmitter>(_eventEmitter)
