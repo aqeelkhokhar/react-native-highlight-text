@@ -1,16 +1,15 @@
 import { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { StyleSheet, SafeAreaView } from 'react-native';
 import { HighlightTextView } from 'react-native-highlight-text-view';
 
 export default function App() {
   const [text, setText] = useState('Hello World');
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <HighlightTextView
         color="#00A4A3"
         textColor="#000000"
-        textAlign="bottom-left"
         fontFamily="Helvetica"
         fontSize="32"
         paddingLeft="8"
@@ -25,7 +24,7 @@ export default function App() {
         }}
         style={styles.textInput}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
