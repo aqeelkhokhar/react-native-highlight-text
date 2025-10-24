@@ -14,6 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) CGFloat paddingTop;
 @property (nonatomic, assign) CGFloat paddingBottom;
 @property (nonatomic, assign) CGFloat cornerRadius;
+@property (nonatomic, assign) CGFloat highlightBorderRadius;
 @end
 
 @interface HighlightTextView : RCTViewComponentView

@@ -16,6 +16,8 @@ export default function App() {
         paddingRight="8"
         paddingTop="4"
         paddingBottom="4"
+        // lineHeight='33'
+        highlightBorderRadius="4"
         text={text}
         isEditable={true}
         onChange={(e) => {

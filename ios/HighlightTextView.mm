@@ -11,6 +11,8 @@ using namespace facebook::react;
 
 @implementation RoundedBackgroundLayoutManager
 
+@synthesize backgroundColor, padding, paddingLeft, paddingRight, paddingTop, paddingBottom, cornerRadius, highlightBorderRadius;
+
 - (void)drawBackgroundForGlyphRange:(NSRange)glyphsToShow atPoint:(CGPoint)origin {
     NSTextStorage *textStorage = self.textStorage;
     NSTextContainer *textContainer = self.textContainers.firstObject;
@@ -45,7 +47,9 @@ using namespace facebook::react;
                         boundingRect.size.width += self.paddingLeft + self.paddingRight;
                         boundingRect.size.height += self.paddingTop + self.paddingBottom;
                         
-                        UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:boundingRect cornerRadius:self.cornerRadius];
+                        // Use highlightBorderRadius if specified, otherwise use cornerRadius
+                        CGFloat radius = self.highlightBorderRadius > 0 ? self.highlightBorderRadius : self.cornerRadius;
+                        UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:boundingRect cornerRadius:radius];
                         [self.backgroundColor setFill];
                         [path fill];
                     }
@@ -73,6 +77,8 @@ using namespace facebook::react;
     CGFloat _paddingTop;
     CGFloat _paddingBottom;
     CGFloat _cornerRadius;
+    CGFloat _highlightBorderRadius;
+    CGFloat _lineHeight;
     BOOL _isUpdatingText;
     NSString * _currentVerticalAlignment;
     NSTextAlignment _currentHorizontalAlignment;
@@ -96,6 +102,8 @@ using namespace facebook::react;
     _paddingTop = 4.0;
     _paddingBottom = 4.0;
     _cornerRadius = 4.0;
+    _highlightBorderRadius = 0.0;
+    _lineHeight = 0.0; // 0 means use default line height
     _currentVerticalAlignment = nil;
     _currentHorizontalAlignment = NSTextAlignmentCenter;
     
@@ -109,6 +117,7 @@ using namespace facebook::react;
     _layoutManager.paddingTop = _paddingTop;
     _layoutManager.paddingBottom = _paddingBottom;
     _layoutManager.cornerRadius = _cornerRadius;
+    _layoutManager.highlightBorderRadius = _highlightBorderRadius;
     
     [textStorage addLayoutManager:_layoutManager];
     
@@ -251,6 +260,26 @@ using namespace facebook::react;
         if (fontSize > 0) {
             NSString *fontFamily = _textView.font.familyName;
             _textView.font = [UIFont fontWithName:fontFamily size:fontSize] ?: [UIFont systemFontOfSize:fontSize];
+            [self applyCharacterBackgrounds]; // Reapply to update font
+        }
+    }
+    
+    if (oldViewProps.lineHeight != newViewProps.lineHeight) {
+        NSString *lineHeightStr = [[NSString alloc] initWithUTF8String: newViewProps.lineHeight.c_str()];
+        CGFloat lineHeight = [lineHeightStr floatValue];
+        if (lineHeight >= 0) {
+            _lineHeight = lineHeight;
+            [self applyCharacterBackgrounds]; // Reapply to update line height
+        }
+    }
+    
+    if (oldViewProps.highlightBorderRadius != newViewProps.highlightBorderRadius) {
+        NSString *radiusStr = [[NSString alloc] initWithUTF8String: newViewProps.highlightBorderRadius.c_str()];
+        CGFloat radius = [radiusStr floatValue];
+        if (radius >= 0) {
+            _highlightBorderRadius = radius;
+            _layoutManager.highlightBorderRadius = _highlightBorderRadius;
+            [self applyCharacterBackgrounds]; // Reapply to update highlight border radius
         }
     }
     
@@ -388,6 +417,24 @@ Class<RCTComponentViewProtocol> HighlightTextViewCls(void)
     
     NSMutableParagraphStyle *paragraphStyle = [[NSMutableParagraphStyle alloc] init];
     paragraphStyle.alignment = _textView.textAlignment;
+    
+    // Apply line height if specified
+    if (_lineHeight > 0) {
+        CGFloat fontSize = _textView.font.pointSize;
+        
+        // If lineHeight is smaller than fontSize, use lineHeightMultiple for better centering
+        if (_lineHeight < fontSize) {
+            paragraphStyle.lineHeightMultiple = _lineHeight / fontSize;
+            paragraphStyle.minimumLineHeight = 0;
+            paragraphStyle.maximumLineHeight = 0;
+        } else {
+            // For larger line heights, use absolute values
+            paragraphStyle.minimumLineHeight = _lineHeight;
+            paragraphStyle.maximumLineHeight = _lineHeight;
+            paragraphStyle.lineHeightMultiple = 0;
+        }
+    }
+    
     [attributedString addAttribute:NSParagraphStyleAttributeName 
                              value:paragraphStyle 
                              range:NSMakeRange(0, text.length)];
