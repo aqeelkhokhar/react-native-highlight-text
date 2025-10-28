@@ -65,20 +65,17 @@ class RoundedBackgroundSpan(
     
     val width = paint.measureText(text, start, end)
     
-    // Use actual text bounds for tighter wrapping (works better with fonts like Eczar)
-    val bounds = android.graphics.Rect()
-    paint.getTextBounds(text.toString(), start, end, bounds)
-    
-    // Calculate text position using bounds
-    val textTop = y + bounds.top.toFloat()
-    val textHeight = bounds.height().toFloat()
+    // Use font metrics for consistent height (matches iOS behavior)
+    val fontMetrics = paint.fontMetrics
+    val textHeight = fontMetrics.descent - fontMetrics.ascent
+    val textTop = y + fontMetrics.ascent
     
     // Only add padding for first and last characters in a group
     val leftPad = if (isFirstInGroup) paddingLeft else 0f
     val rightPad = if (isLastInGroup) paddingRight else 0f
     
-    // Extend background slightly to overlap and eliminate gaps
-    val overlapExtension = 1f
+    // Extend background to overlap and eliminate gaps between characters
+    val overlapExtension = 2f
     val leftExtension = if (!isFirstInGroup) overlapExtension else 0f
     val rightExtension = if (!isLastInGroup) overlapExtension else 0f
     
@@ -237,6 +234,11 @@ class HighlightTextView : AppCompatEditText {
   
   fun setCharPaddingBottom(padding: Float) {
     charPaddingBottom = padding
+    applyCharacterBackgrounds()
+  }
+  
+  fun setCornerRadius(radius: Float) {
+    cornerRadius = radius
     applyCharacterBackgrounds()
   }
   
