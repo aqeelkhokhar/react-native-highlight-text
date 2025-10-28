@@ -28,39 +28,43 @@ export default function App() {
 
         <View style={styles.section}>
           <Text style={styles.label}>
-            With Background Insets (tight wrapping)
+            With Background Insets + Tight Line Height
           </Text>
           <HighlightTextView
             color="#FFD700"
             textColor="#000000"
             fontFamily="Helvetica"
             fontSize="32"
+            lineHeight="30"
             paddingLeft="8"
             paddingRight="8"
             paddingTop="4"
             paddingBottom="4"
-            backgroundInsetTop="4"
-            backgroundInsetBottom="6"
+            backgroundInsetTop="14"
+            backgroundInsetBottom="14"
             highlightBorderRadius="4"
-            text="Tight Background"
+            text="Tight Background with lines touching each other smoothly"
             isEditable={false}
             style={styles.textInput}
           />
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.label}>Editable Text</Text>
+          <Text style={styles.label}>Editable Text (Touching Lines)</Text>
           <HighlightTextView
             color="#00A4A3"
             textColor="#000000"
             fontFamily="Helvetica"
             fontSize="32"
+            lineHeight="30"
             paddingLeft="8"
             paddingRight="8"
             paddingTop="4"
             paddingBottom="4"
-            backgroundInsetTop="2"
-            backgroundInsetBottom="6"
+            backgroundInsetTop="14"
+            backgroundInsetBottom="14"
+            backgroundInsetLeft="28"
+            backgroundInsetRight="28"
             highlightBorderRadius="4"
             text={text}
             isEditable={true}
