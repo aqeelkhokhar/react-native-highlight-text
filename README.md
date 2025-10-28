@@ -87,6 +87,25 @@ export default function App() {
 />
 ```
 
+**Example with touching backgrounds (tight line spacing):**
+To make backgrounds touch vertically across multiple lines, combine `lineHeight` with `backgroundInset`:
+```jsx
+<HighlightTextView
+  fontSize="32"
+  lineHeight="36"              // Slightly larger than fontSize for tight spacing
+  paddingLeft="8"
+  paddingRight="8"
+  paddingTop="4"
+  paddingBottom="4"
+  backgroundInsetTop="14"      // Large inset reduces background height
+  backgroundInsetBottom="14"   // Creates room for lines to touch
+  highlightBorderRadius="4"
+  text="Multiple lines with touching backgrounds create smooth vertical flow"
+/>
+```
+
+**Tip:** Set `lineHeight` to approximately `fontSize + 4` to `fontSize + 8`, then adjust `backgroundInsetTop` and `backgroundInsetBottom` until backgrounds touch smoothly.
+
 **Note:** Vertical alignment is currently supported on iOS only. On Android, text will use default vertical positioning.
 
 

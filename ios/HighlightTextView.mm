@@ -476,20 +476,17 @@ Class<RCTComponentViewProtocol> HighlightTextViewCls(void)
     NSMutableParagraphStyle *paragraphStyle = [[NSMutableParagraphStyle alloc] init];
     paragraphStyle.alignment = _textView.textAlignment;
     
-    // Apply line height if specified
+    // Apply line height if specified (allows tight line spacing for touching backgrounds)
     if (_lineHeight > 0) {
-        CGFloat fontSize = _textView.font.pointSize;
+        // Always use absolute line height for precise control
+        paragraphStyle.minimumLineHeight = _lineHeight;
+        paragraphStyle.maximumLineHeight = _lineHeight;
+        paragraphStyle.lineHeightMultiple = 0;
         
-        // If lineHeight is smaller than fontSize, use lineHeightMultiple for better centering
-        if (_lineHeight < fontSize) {
-            paragraphStyle.lineHeightMultiple = _lineHeight / fontSize;
-            paragraphStyle.minimumLineHeight = 0;
-            paragraphStyle.maximumLineHeight = 0;
-        } else {
-            // For larger line heights, use absolute values
-            paragraphStyle.minimumLineHeight = _lineHeight;
-            paragraphStyle.maximumLineHeight = _lineHeight;
-            paragraphStyle.lineHeightMultiple = 0;
+        // For tight line spacing, reduce line spacing to bring lines closer
+        if (_lineHeight <= _textView.font.pointSize * 1.2) {
+            // Negative line spacing brings lines closer together
+            paragraphStyle.lineSpacing = -(_textView.font.pointSize * 0.1);
         }
     }
     

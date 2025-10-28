@@ -147,8 +147,9 @@ class HighlightTextViewManager : SimpleViewManager<HighlightTextView>(),
 
   @ReactProp(name = "lineHeight")
   override fun setLineHeight(view: HighlightTextView?, value: String?) {
-    // Line height is handled differently on Android - this is a placeholder
-    // Android EditText doesn't directly support line height like iOS
+    value?.toFloatOrNull()?.let { lineHeight ->
+      view?.setCustomLineHeight(lineHeight)
+    }
   }
 
   @ReactProp(name = "highlightBorderRadius")

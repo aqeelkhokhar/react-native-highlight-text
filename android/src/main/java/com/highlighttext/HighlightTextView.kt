@@ -154,6 +154,7 @@ class HighlightTextView : AppCompatEditText {
   private var backgroundInsetBottom: Float = 0f
   private var backgroundInsetLeft: Float = 0f
   private var backgroundInsetRight: Float = 0f
+  private var customLineHeight: Float = 0f
   private var isUpdatingText: Boolean = false
   
   var onTextChangeListener: ((String) -> Unit)? = null
@@ -261,6 +262,11 @@ class HighlightTextView : AppCompatEditText {
     backgroundInsetRight = inset
     applyCharacterBackgrounds()
   }
+  
+  fun setCustomLineHeight(lineHeight: Float) {
+    customLineHeight = lineHeight
+    applyCharacterBackgrounds()
+  }
 
   fun setTextProp(text: String) {
     if (this.text?.toString() != text) {
@@ -276,6 +282,12 @@ class HighlightTextView : AppCompatEditText {
     if (text.isEmpty()) return
     
     val spannable = SpannableString(text)
+    
+    // Apply line height if specified
+    if (customLineHeight > 0) {
+      val lineSpacingMultiplier = customLineHeight / textSize
+      setLineSpacing(0f, lineSpacingMultiplier)
+    }
     
     // Apply character-by-character for proper line wrapping
     for (i in text.indices) {
