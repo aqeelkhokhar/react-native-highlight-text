@@ -145,6 +145,34 @@ class HighlightTextViewManager : SimpleViewManager<HighlightTextView>(),
     }
   }
 
+  @ReactProp(name = "backgroundInsetTop")
+  override fun setBackgroundInsetTop(view: HighlightTextView?, value: String?) {
+    value?.toFloatOrNull()?.let { inset ->
+      view?.setBackgroundInsetTop(inset)
+    }
+  }
+
+  @ReactProp(name = "backgroundInsetBottom")
+  override fun setBackgroundInsetBottom(view: HighlightTextView?, value: String?) {
+    value?.toFloatOrNull()?.let { inset ->
+      view?.setBackgroundInsetBottom(inset)
+    }
+  }
+
+  @ReactProp(name = "backgroundInsetLeft")
+  override fun setBackgroundInsetLeft(view: HighlightTextView?, value: String?) {
+    value?.toFloatOrNull()?.let { inset ->
+      view?.setBackgroundInsetLeft(inset)
+    }
+  }
+
+  @ReactProp(name = "backgroundInsetRight")
+  override fun setBackgroundInsetRight(view: HighlightTextView?, value: String?) {
+    value?.toFloatOrNull()?.let { inset ->
+      view?.setBackgroundInsetRight(inset)
+    }
+  }
+
   @ReactProp(name = "text")
   override fun setText(view: HighlightTextView?, value: String?) {
     view?.setTextProp(value ?: "")

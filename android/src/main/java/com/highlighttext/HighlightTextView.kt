@@ -22,6 +22,10 @@ class RoundedBackgroundSpan(
   private val paddingRight: Float,
   private val paddingTop: Float,
   private val paddingBottom: Float,
+  private val backgroundInsetTop: Float,
+  private val backgroundInsetBottom: Float,
+  private val backgroundInsetLeft: Float,
+  private val backgroundInsetRight: Float,
   private val cornerRadius: Float,
   private val isFirstInGroup: Boolean = false,
   private val isLastInGroup: Boolean = false
@@ -61,10 +65,13 @@ class RoundedBackgroundSpan(
     
     val width = paint.measureText(text, start, end)
     
-    // Use font metrics for consistent height instead of character bounds
-    val fontMetrics = paint.fontMetrics
-    val textHeight = fontMetrics.descent - fontMetrics.ascent
-    val textTop = y + fontMetrics.ascent
+    // Use actual text bounds for tighter wrapping (works better with fonts like Eczar)
+    val bounds = android.graphics.Rect()
+    paint.getTextBounds(text.toString(), start, end, bounds)
+    
+    // Calculate text position using bounds
+    val textTop = y + bounds.top.toFloat()
+    val textHeight = bounds.height().toFloat()
     
     // Only add padding for first and last characters in a group
     val leftPad = if (isFirstInGroup) paddingLeft else 0f
@@ -75,12 +82,16 @@ class RoundedBackgroundSpan(
     val leftExtension = if (!isFirstInGroup) overlapExtension else 0f
     val rightExtension = if (!isLastInGroup) overlapExtension else 0f
     
-    // Calculate proper bounds with padding using consistent font metrics
+    // Apply background insets first (shrinks from line box)
+    val insetTop = textTop + backgroundInsetTop
+    val insetHeight = textHeight - (backgroundInsetTop + backgroundInsetBottom)
+    
+    // Calculate proper bounds with insets then padding
     val rect = RectF(
-      x - leftExtension,
-      textTop - paddingTop,
-      x + width + leftPad + rightPad + rightExtension,
-      textTop + textHeight + paddingBottom
+      x - leftExtension + backgroundInsetLeft,
+      insetTop - paddingTop,
+      x + width + leftPad + rightPad + rightExtension - backgroundInsetRight,
+      insetTop + insetHeight + paddingBottom
     )
     
     // Draw background with selective corner rounding
@@ -142,6 +153,10 @@ class HighlightTextView : AppCompatEditText {
   private var charPaddingRight: Float = 8f
   private var charPaddingTop: Float = 4f
   private var charPaddingBottom: Float = 4f
+  private var backgroundInsetTop: Float = 0f
+  private var backgroundInsetBottom: Float = 0f
+  private var backgroundInsetLeft: Float = 0f
+  private var backgroundInsetRight: Float = 0f
   private var isUpdatingText: Boolean = false
   
   var onTextChangeListener: ((String) -> Unit)? = null
@@ -224,6 +239,26 @@ class HighlightTextView : AppCompatEditText {
     charPaddingBottom = padding
     applyCharacterBackgrounds()
   }
+  
+  fun setBackgroundInsetTop(inset: Float) {
+    backgroundInsetTop = inset
+    applyCharacterBackgrounds()
+  }
+  
+  fun setBackgroundInsetBottom(inset: Float) {
+    backgroundInsetBottom = inset
+    applyCharacterBackgrounds()
+  }
+  
+  fun setBackgroundInsetLeft(inset: Float) {
+    backgroundInsetLeft = inset
+    applyCharacterBackgrounds()
+  }
+  
+  fun setBackgroundInsetRight(inset: Float) {
+    backgroundInsetRight = inset
+    applyCharacterBackgrounds()
+  }
 
   fun setTextProp(text: String) {
     if (this.text?.toString() != text) {
@@ -268,6 +303,10 @@ class HighlightTextView : AppCompatEditText {
           charPaddingRight,
           charPaddingTop,
           charPaddingBottom,
+          backgroundInsetTop,
+          backgroundInsetBottom,
+          backgroundInsetLeft,
+          backgroundInsetRight,
           cornerRadius,
           isFirst,
           isLast

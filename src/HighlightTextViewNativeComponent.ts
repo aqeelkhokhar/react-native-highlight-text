@@ -53,6 +53,14 @@ export interface HighlightTextViewProps extends ViewProps {
   paddingRight?: string;
   paddingTop?: string;
   paddingBottom?: string;
+  /** Reduces background height from the top (shrinks inward from font line box) */
+  backgroundInsetTop?: string;
+  /** Reduces background height from the bottom (shrinks inward from font line box) */
+  backgroundInsetBottom?: string;
+  /** Reduces background width from the left (shrinks inward from glyph bounds) */
+  backgroundInsetLeft?: string;
+  /** Reduces background width from the right (shrinks inward from glyph bounds) */
+  backgroundInsetRight?: string;
   text?: string;
   isEditable?: boolean;
   onChange?: BubblingEventHandler<OnChangeEventData>;

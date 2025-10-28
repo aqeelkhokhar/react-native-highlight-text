@@ -10217,12 +10217,13 @@ __metadata:
     react: 19.1.0
     react-native: 0.81.1
     react-native-builder-bob: ^0.40.13
+    react-native-highlight-text-view: "*"
     react-native-monorepo-config: ^0.1.9
     react-native-safe-area-context: ^5.5.2
   languageName: unknown
   linkType: soft
 
-"react-native-highlight-text-view@workspace:.":
+"react-native-highlight-text-view@*, react-native-highlight-text-view@workspace:.":
   version: 0.0.0-use.local
   resolution: "react-native-highlight-text-view@workspace:."
   dependencies:

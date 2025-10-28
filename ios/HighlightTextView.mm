@@ -11,7 +11,7 @@ using namespace facebook::react;
 
 @implementation RoundedBackgroundLayoutManager
 
-@synthesize backgroundColor, padding, paddingLeft, paddingRight, paddingTop, paddingBottom, cornerRadius, highlightBorderRadius;
+@synthesize backgroundColor, padding, paddingLeft, paddingRight, paddingTop, paddingBottom, cornerRadius, highlightBorderRadius, backgroundInsetTop, backgroundInsetBottom, backgroundInsetLeft, backgroundInsetRight;
 
 - (void)drawBackgroundForGlyphRange:(NSRange)glyphsToShow atPoint:(CGPoint)origin {
     NSTextStorage *textStorage = self.textStorage;
@@ -41,7 +41,13 @@ using namespace facebook::react;
                     if (boundingRect.size.width > 1.0 && boundingRect.size.height > 1.0 && 
                         boundingRect.size.width < (textContainer.size.width * 0.8)) {
                         
-                        // Apply individual padding values
+                        // Apply background insets first (shrinks from line box)
+                        boundingRect.origin.y += self.backgroundInsetTop;
+                        boundingRect.size.height -= (self.backgroundInsetTop + self.backgroundInsetBottom);
+                        boundingRect.origin.x += self.backgroundInsetLeft;
+                        boundingRect.size.width -= (self.backgroundInsetLeft + self.backgroundInsetRight);
+                        
+                        // Then apply padding (expands outward)
                         boundingRect.origin.x += origin.x - self.paddingLeft;
                         boundingRect.origin.y += origin.y - self.paddingTop;
                         boundingRect.size.width += self.paddingLeft + self.paddingRight;
@@ -78,6 +84,10 @@ using namespace facebook::react;
     CGFloat _paddingBottom;
     CGFloat _cornerRadius;
     CGFloat _highlightBorderRadius;
+    CGFloat _backgroundInsetTop;
+    CGFloat _backgroundInsetBottom;
+    CGFloat _backgroundInsetLeft;
+    CGFloat _backgroundInsetRight;
     CGFloat _lineHeight;
     BOOL _isUpdatingText;
     NSString * _currentVerticalAlignment;
@@ -103,6 +113,10 @@ using namespace facebook::react;
     _paddingBottom = 4.0;
     _cornerRadius = 4.0;
     _highlightBorderRadius = 0.0;
+    _backgroundInsetTop = 0.0;
+    _backgroundInsetBottom = 0.0;
+    _backgroundInsetLeft = 0.0;
+    _backgroundInsetRight = 0.0;
     _lineHeight = 0.0; // 0 means use default line height
     _currentVerticalAlignment = nil;
     _currentHorizontalAlignment = NSTextAlignmentCenter;
@@ -118,6 +132,10 @@ using namespace facebook::react;
     _layoutManager.paddingBottom = _paddingBottom;
     _layoutManager.cornerRadius = _cornerRadius;
     _layoutManager.highlightBorderRadius = _highlightBorderRadius;
+    _layoutManager.backgroundInsetTop = _backgroundInsetTop;
+    _layoutManager.backgroundInsetBottom = _backgroundInsetBottom;
+    _layoutManager.backgroundInsetLeft = _backgroundInsetLeft;
+    _layoutManager.backgroundInsetRight = _backgroundInsetRight;
     
     [textStorage addLayoutManager:_layoutManager];
     
@@ -336,6 +354,46 @@ using namespace facebook::react;
         if (padding >= 0) {
             _paddingBottom = padding;
             _layoutManager.paddingBottom = _paddingBottom;
+        }
+    }
+    
+    if (oldViewProps.backgroundInsetTop != newViewProps.backgroundInsetTop) {
+        NSString *insetStr = [[NSString alloc] initWithUTF8String: newViewProps.backgroundInsetTop.c_str()];
+        CGFloat inset = [insetStr floatValue];
+        if (inset >= 0) {
+            _backgroundInsetTop = inset;
+            _layoutManager.backgroundInsetTop = _backgroundInsetTop;
+            [self applyCharacterBackgrounds];
+        }
+    }
+    
+    if (oldViewProps.backgroundInsetBottom != newViewProps.backgroundInsetBottom) {
+        NSString *insetStr = [[NSString alloc] initWithUTF8String: newViewProps.backgroundInsetBottom.c_str()];
+        CGFloat inset = [insetStr floatValue];
+        if (inset >= 0) {
+            _backgroundInsetBottom = inset;
+            _layoutManager.backgroundInsetBottom = _backgroundInsetBottom;
+            [self applyCharacterBackgrounds];
+        }
+    }
+    
+    if (oldViewProps.backgroundInsetLeft != newViewProps.backgroundInsetLeft) {
+        NSString *insetStr = [[NSString alloc] initWithUTF8String: newViewProps.backgroundInsetLeft.c_str()];
+        CGFloat inset = [insetStr floatValue];
+        if (inset >= 0) {
+            _backgroundInsetLeft = inset;
+            _layoutManager.backgroundInsetLeft = _backgroundInsetLeft;
+            [self applyCharacterBackgrounds];
+        }
+    }
+    
+    if (oldViewProps.backgroundInsetRight != newViewProps.backgroundInsetRight) {
+        NSString *insetStr = [[NSString alloc] initWithUTF8String: newViewProps.backgroundInsetRight.c_str()];
+        CGFloat inset = [insetStr floatValue];
+        if (inset >= 0) {
+            _backgroundInsetRight = inset;
+            _layoutManager.backgroundInsetRight = _backgroundInsetRight;
+            [self applyCharacterBackgrounds];
         }
     }
     

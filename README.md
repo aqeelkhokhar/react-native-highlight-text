@@ -50,15 +50,42 @@ export default function App() {
 | `verticalAlign` | `'top' \| 'center' \| 'middle' \| 'bottom'` | - | Vertical alignment (iOS only). Alternative to using combined `textAlign` values |
 | `fontFamily` | `string` | - | Font family name |
 | `fontSize` | `string` | `32` | Font size in points |
-| `padding` | `string` | `4` | Padding around each character highlight |
+| `lineHeight` | `string` | - | Line height override |
+| `highlightBorderRadius` | `string` | `4` | Border radius for the highlight background |
+| `padding` | `string` | `4` | Padding around each character highlight (expands background outward) |
 | `paddingLeft` | `string` | - | Left padding for character highlight |
 | `paddingRight` | `string` | - | Right padding for character highlight |
 | `paddingTop` | `string` | - | Top padding for character highlight |
 | `paddingBottom` | `string` | - | Bottom padding for character highlight |
+| `backgroundInsetTop` | `string` | `0` | Shrinks background from top (useful for fonts with large vertical metrics) |
+| `backgroundInsetBottom` | `string` | `0` | Shrinks background from bottom (useful for fonts with large vertical metrics) |
+| `backgroundInsetLeft` | `string` | `0` | Shrinks background from left |
+| `backgroundInsetRight` | `string` | `0` | Shrinks background from right |
 | `text` | `string` | - | Controlled text value |
 | `isEditable` | `boolean` | `true` | Whether the text is editable |
 | `onChange` | `(event: { nativeEvent: { text: string } }) => void` | - | Callback fired when text changes |
 
+### Understanding Padding vs Background Insets
+
+- **Padding props** (`paddingTop`, `paddingBottom`, etc.): Expand the background **outward** from the text, adding extra colored area around glyphs.
+- **Background inset props** (`backgroundInsetTop`, `backgroundInsetBottom`, etc.): Shrink the background **inward** from the font's line box, creating tighter wrapping around actual glyphs.
+
+**Use case for background insets:** Some fonts (like Eczar, Georgia, etc.) have large built-in vertical metrics (ascender/descender), making highlights appear too tall. Use `backgroundInsetTop` and `backgroundInsetBottom` to create a tighter fit around the visible glyphs.
+
+**Example with large-metric font:**
+```jsx
+<HighlightTextView
+  fontFamily="Eczar"
+  fontSize="32"
+  paddingLeft="8"
+  paddingRight="8"
+  paddingTop="4"
+  paddingBottom="4"
+  backgroundInsetTop="6"     
+  backgroundInsetBottom="6"   
+  text="Tight Background"
+/>
+```
 
 **Note:** Vertical alignment is currently supported on iOS only. On Android, text will use default vertical positioning.
 
