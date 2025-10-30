@@ -47,11 +47,11 @@ export default function App() {
 | `color` | `string` | `#FFFF00` | Background highlight color (hex format) |
 | `textColor` | `string` | - | Text color (hex format) |
 | `textAlign` | `string` | `left` | Text alignment. Supports: `'left'`, `'center'`, `'right'`, `'justify'`, `'flex-start'`, `'flex-end'`, `'top'`, `'bottom'`, `'top-left'`, `'top-center'`, `'top-right'`, `'bottom-left'`, `'bottom-center'`, `'bottom-right'` |
-| `verticalAlign` | `'top' \| 'center' \| 'middle' \| 'bottom'` | - | Vertical alignment (iOS only). Alternative to using combined `textAlign` values |
+| `verticalAlign` | `'top' \| 'center' \| 'middle' \| 'bottom'` | - | Vertical alignment (iOS only). Alternative to using combined `textAlign` values. **Note:** Android does not support vertical alignment and will use default vertical positioning. |
 | `fontFamily` | `string` | - | Font family name |
 | `fontSize` | `string` | `32` | Font size in points |
-| `lineHeight` | `string` | - | Line height override |
-| `highlightBorderRadius` | `string` | `4` | Border radius for the highlight background |
+| `lineHeight` | `string` | `0` | Line height override (0 means use default line height) |
+| `highlightBorderRadius` | `string` | `0` | Border radius for the highlight background |
 | `padding` | `string` | `4` | Padding around each character highlight (expands background outward) |
 | `paddingLeft` | `string` | - | Left padding for character highlight |
 | `paddingRight` | `string` | - | Right padding for character highlight |
