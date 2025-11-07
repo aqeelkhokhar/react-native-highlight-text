@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
+import android.graphics.Typeface
 import android.text.Editable
 import android.text.Spannable
 import android.text.SpannableString
@@ -146,8 +147,9 @@ class HighlightTextView : AppCompatEditText {
   private var characterBackgroundColor: Int = Color.parseColor("#FFFF00")
   private var textColorValue: Int = Color.BLACK
   private var cornerRadius: Float = 4f
-  private var charPaddingLeft: Float = 8f
-  private var charPaddingRight: Float = 8f
+  private var highlightBorderRadius: Float = 0f
+  private var charPaddingLeft: Float = 4f
+  private var charPaddingRight: Float = 4f
   private var charPaddingTop: Float = 4f
   private var charPaddingBottom: Float = 4f
   private var backgroundInsetTop: Float = 0f
@@ -155,6 +157,9 @@ class HighlightTextView : AppCompatEditText {
   private var backgroundInsetLeft: Float = 0f
   private var backgroundInsetRight: Float = 0f
   private var customLineHeight: Float = 0f
+  private var currentFontFamily: String? = null
+  private var currentFontWeight: String = "normal"
+  private var currentVerticalAlign: String? = null
   private var isUpdatingText: Boolean = false
   
   var onTextChangeListener: ((String) -> Unit)? = null
@@ -243,6 +248,61 @@ class HighlightTextView : AppCompatEditText {
     applyCharacterBackgrounds()
   }
   
+  fun setHighlightBorderRadius(radius: Float) {
+    highlightBorderRadius = radius
+    applyCharacterBackgrounds()
+  }
+  
+  fun setFontWeight(weight: String) {
+    currentFontWeight = weight
+    updateFont()
+  }
+  
+  fun setFontFamilyProp(family: String?) {
+    currentFontFamily = family
+    updateFont()
+  }
+  
+  private fun updateFont() {
+    val style = when (currentFontWeight) {
+      "bold", "700", "800", "900" -> Typeface.BOLD
+      "100", "200", "300" -> Typeface.NORMAL // Android doesn't have lighter than normal
+      else -> Typeface.NORMAL
+    }
+    
+    val typeface = if (currentFontFamily != null) {
+      when (currentFontFamily?.lowercase()) {
+        "system" -> Typeface.create(Typeface.DEFAULT, style)
+        "sans-serif" -> Typeface.create(Typeface.SANS_SERIF, style)
+        "serif" -> Typeface.create(Typeface.SERIF, style)
+        "monospace" -> Typeface.create(Typeface.MONOSPACE, style)
+        else -> Typeface.create(currentFontFamily, style)
+      }
+    } else {
+      Typeface.create(Typeface.DEFAULT, style)
+    }
+    
+    this.typeface = typeface
+    applyCharacterBackgrounds()
+  }
+  
+  fun setVerticalAlign(align: String?) {
+    currentVerticalAlign = align
+    updateVerticalAlignment()
+  }
+  
+  private fun updateVerticalAlignment() {
+    // Preserve horizontal alignment when updating vertical
+    val horizontalGravity = gravity and Gravity.HORIZONTAL_GRAVITY_MASK
+    val verticalGravity = when (currentVerticalAlign) {
+      "top" -> Gravity.TOP
+      "bottom" -> Gravity.BOTTOM
+      else -> Gravity.CENTER_VERTICAL
+    }
+    
+    gravity = horizontalGravity or verticalGravity
+  }
+  
   fun setBackgroundInsetTop(inset: Float) {
     backgroundInsetTop = inset
     applyCharacterBackgrounds()
@@ -310,6 +370,9 @@ class HighlightTextView : AppCompatEditText {
         val isFirst = i == 0 || !shouldHighlightChar(text, i - 1)
         val isLast = i == text.length - 1 || !shouldHighlightChar(text, i + 1)
         
+        // Use highlightBorderRadius if specified, otherwise use cornerRadius (matches iOS)
+        val radius = if (highlightBorderRadius > 0) highlightBorderRadius else cornerRadius
+        
         val span = RoundedBackgroundSpan(
           characterBackgroundColor,
           textColorValue,
@@ -321,7 +384,7 @@ class HighlightTextView : AppCompatEditText {
           backgroundInsetBottom,
           backgroundInsetLeft,
           backgroundInsetRight,
-          cornerRadius,
+          radius,
           isFirst,
           isLast
         )
