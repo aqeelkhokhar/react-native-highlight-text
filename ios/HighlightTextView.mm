@@ -89,6 +89,8 @@ using namespace facebook::react;
     CGFloat _backgroundInsetLeft;
     CGFloat _backgroundInsetRight;
     CGFloat _lineHeight;
+    NSString * _fontFamily;
+    NSString * _fontWeight;
     BOOL _isUpdatingText;
     NSString * _currentVerticalAlignment;
     NSTextAlignment _currentHorizontalAlignment;
@@ -118,6 +120,8 @@ using namespace facebook::react;
     _backgroundInsetLeft = 0.0;
     _backgroundInsetRight = 0.0;
     _lineHeight = 0.0; // 0 means use default line height
+    _fontFamily = nil;
+    _fontWeight = @"normal";
     _currentVerticalAlignment = nil;
     _currentHorizontalAlignment = NSTextAlignmentCenter;
     
@@ -276,9 +280,7 @@ using namespace facebook::react;
         NSString *fontSizeStr = [[NSString alloc] initWithUTF8String: newViewProps.fontSize.c_str()];
         CGFloat fontSize = [fontSizeStr floatValue];
         if (fontSize > 0) {
-            NSString *fontFamily = _textView.font.familyName;
-            _textView.font = [UIFont fontWithName:fontFamily size:fontSize] ?: [UIFont systemFontOfSize:fontSize];
-            [self applyCharacterBackgrounds]; // Reapply to update font
+            [self updateFont];
         }
     }
     
@@ -302,9 +304,13 @@ using namespace facebook::react;
     }
     
     if (oldViewProps.fontFamily != newViewProps.fontFamily) {
-        NSString *fontFamily = [[NSString alloc] initWithUTF8String: newViewProps.fontFamily.c_str()];
-        CGFloat fontSize = _textView.font.pointSize;
-        _textView.font = [UIFont fontWithName:fontFamily size:fontSize] ?: [UIFont systemFontOfSize:fontSize];
+        _fontFamily = [[NSString alloc] initWithUTF8String: newViewProps.fontFamily.c_str()];
+        [self updateFont];
+    }
+    
+    if (oldViewProps.fontWeight != newViewProps.fontWeight) {
+        _fontWeight = [[NSString alloc] initWithUTF8String: newViewProps.fontWeight.c_str()];
+        [self updateFont];
     }
     
     if (oldViewProps.padding != newViewProps.padding) {
@@ -449,6 +455,60 @@ Class<RCTComponentViewProtocol> HighlightTextViewCls(void)
                 });
         }
     }
+}
+
+- (void)updateFont
+{
+    CGFloat fontSize = _textView.font.pointSize;
+    UIFont *newFont = nil;
+    
+    // Parse font weight
+    UIFontWeight fontWeight = UIFontWeightRegular;
+    if (_fontWeight) {
+        if ([_fontWeight isEqualToString:@"bold"] || [_fontWeight isEqualToString:@"700"]) {
+            fontWeight = UIFontWeightBold;
+        } else if ([_fontWeight isEqualToString:@"100"]) {
+            fontWeight = UIFontWeightUltraLight;
+        } else if ([_fontWeight isEqualToString:@"200"]) {
+            fontWeight = UIFontWeightThin;
+        } else if ([_fontWeight isEqualToString:@"300"]) {
+            fontWeight = UIFontWeightLight;
+        } else if ([_fontWeight isEqualToString:@"400"] || [_fontWeight isEqualToString:@"normal"]) {
+            fontWeight = UIFontWeightRegular;
+        } else if ([_fontWeight isEqualToString:@"500"]) {
+            fontWeight = UIFontWeightMedium;
+        } else if ([_fontWeight isEqualToString:@"600"]) {
+            fontWeight = UIFontWeightSemibold;
+        } else if ([_fontWeight isEqualToString:@"700"]) {
+            fontWeight = UIFontWeightBold;
+        } else if ([_fontWeight isEqualToString:@"800"]) {
+            fontWeight = UIFontWeightHeavy;
+        } else if ([_fontWeight isEqualToString:@"900"]) {
+            fontWeight = UIFontWeightBlack;
+        }
+    }
+    
+    if (_fontFamily && _fontFamily.length > 0) {
+        // Try to get custom font with weight
+        UIFontDescriptor *fontDescriptor = [UIFontDescriptor fontDescriptorWithName:_fontFamily size:fontSize];
+        UIFontDescriptor *weightedDescriptor = [fontDescriptor fontDescriptorByAddingAttributes:@{
+            UIFontDescriptorTraitsAttribute: @{
+                UIFontWeightTrait: @(fontWeight)
+            }
+        }];
+        newFont = [UIFont fontWithDescriptor:weightedDescriptor size:fontSize];
+        
+        // Fallback if custom font not found
+        if (!newFont) {
+            newFont = [UIFont systemFontOfSize:fontSize weight:fontWeight];
+        }
+    } else {
+        // Use system font with weight
+        newFont = [UIFont systemFontOfSize:fontSize weight:fontWeight];
+    }
+    
+    _textView.font = newFont;
+    [self applyCharacterBackgrounds];
 }
 
 - (void)applyCharacterBackgrounds

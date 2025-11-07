@@ -46,6 +46,7 @@ export interface HighlightTextViewProps extends ViewProps {
   verticalAlign?: string;
   fontFamily?: string;
   fontSize?: string;
+  fontWeight?: string;
   lineHeight?: string;
   highlightBorderRadius?: string;
   padding?: string;

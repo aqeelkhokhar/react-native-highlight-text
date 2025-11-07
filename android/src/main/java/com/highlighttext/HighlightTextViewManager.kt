@@ -1,6 +1,7 @@
 package com.highlighttext
 
 import android.graphics.Color
+import android.graphics.Typeface
 import android.text.InputType
 import android.view.Gravity
 import com.facebook.react.bridge.Arguments
@@ -74,33 +75,54 @@ class HighlightTextViewManager : SimpleViewManager<HighlightTextView>(),
   override fun setTextAlign(view: HighlightTextView?, value: String?) {
     // Parse combined alignment (e.g., "top-left", "bottom-center")
     val parts = value?.split("-") ?: emptyList()
+    var verticalAlign: String? = null
     var horizontalAlign = value
     
     if (parts.size == 2) {
-      // Combined format: use the second part for horizontal alignment
+      // Combined format: "top-left", "bottom-center", etc.
+      verticalAlign = parts[0]
       horizontalAlign = parts[1]
+    } else if (value == "top" || value == "bottom") {
+      // Pure vertical alignment
+      verticalAlign = value
+      horizontalAlign = null
     }
     
-    // Apply horizontal alignment
-    view?.gravity = when (horizontalAlign) {
-      "left", "flex-start" -> Gravity.START or Gravity.CENTER_VERTICAL
-      "right", "flex-end" -> Gravity.END or Gravity.CENTER_VERTICAL
-      "center" -> Gravity.CENTER
-      "justify" -> Gravity.START or Gravity.CENTER_VERTICAL // Android doesn't support justify natively
-      else -> Gravity.CENTER
+    // Determine vertical gravity
+    val vGravity = when (verticalAlign) {
+      "top" -> Gravity.TOP
+      "bottom" -> Gravity.BOTTOM
+      else -> Gravity.CENTER_VERTICAL
     }
+    
+    // Determine horizontal gravity
+    val hGravity = when (horizontalAlign) {
+      "left", "flex-start" -> Gravity.START
+      "right", "flex-end" -> Gravity.END
+      "center" -> Gravity.CENTER_HORIZONTAL
+      "justify" -> Gravity.START // Android doesn't support justify natively
+      else -> Gravity.CENTER_HORIZONTAL
+    }
+    
+    // Apply combined gravity
+    view?.gravity = vGravity or hGravity
   }
 
   @ReactProp(name = "verticalAlign")
   override fun setVerticalAlign(view: HighlightTextView?, value: String?) {
-    // Android EditText doesn't support vertical alignment as easily as iOS
-    // This would require custom implementation with layout adjustments
-    // For now, we'll keep the default behavior
+    view?.setVerticalAlign(value)
   }
 
   @ReactProp(name = "fontFamily")
   override fun setFontFamily(view: HighlightTextView?, value: String?) {
-    // Font family handling can be added if needed
+    view?.setFontFamilyProp(value)
+  }
+  
+  @ReactProp(name = "fontWeight")
+  override fun setFontWeight(view: HighlightTextView?, value: String?) {
+    value?.let { weight ->
+      view?.setFontWeight(weight)
+    }
   }
 
   @ReactProp(name = "fontSize")
@@ -155,7 +177,7 @@ class HighlightTextViewManager : SimpleViewManager<HighlightTextView>(),
   @ReactProp(name = "highlightBorderRadius")
   override fun setHighlightBorderRadius(view: HighlightTextView?, value: String?) {
     value?.toFloatOrNull()?.let { radius ->
-      view?.setCornerRadius(radius)
+      view?.setHighlightBorderRadius(radius)
     }
   }
 
