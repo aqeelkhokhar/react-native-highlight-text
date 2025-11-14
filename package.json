@@ -1,6 +1,6 @@
 {
   "name": "react-native-highlight-text-view",
-  "version": "0.1.10",
+  "version": "0.1.12",
   "description": "A native text input for React Native that supports inline text highlighting",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
@@ -50,6 +50,9 @@
     "url": "git+https://github.com/aqeelkhokhar/react-native-highlight-text.git.git"
   },
   "author": "Aqeel Ahmad Khokhar <aqeelahmadkhokhar99@gmail.com> (https://portfolio-aqeel-ahmads-projects-6ef4879c.vercel.app/)",
+  "contributors": [
+    "Muhammad Saqib Aziz <saqib.aziz1000@gmail.com>"
+  ],
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/aqeelkhokhar/react-native-highlight-text.git/issues"

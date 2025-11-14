@@ -13,12 +13,13 @@ export default function App() {
           <HighlightTextView
             color="#00A4A3"
             textColor="#FFFFFF"
-            fontSize="24"
+            fontSize="44"
+            fontWeight="900"
             paddingLeft="8"
             paddingRight="8"
             paddingTop="4"
             paddingBottom="4"
-            highlightBorderRadius="33"
+            highlightBorderRadius="4"
             text="Rounded Corners"
             isEditable={false}
             style={styles.textBox}
@@ -49,7 +50,7 @@ export default function App() {
             color="#9B59B6"
             textColor="#FFFFFF"
             fontSize="26"
-            fontWeight="bold"
+            fontWeight="400"
             paddingLeft="8"
             paddingRight="8"
             paddingTop="4"
@@ -174,6 +175,26 @@ export default function App() {
         </View>
 
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
+            Large Font Size (44) + Heavy Weight (900)
+          </Text>
+          <HighlightTextView
+            color="#FF5722"
+            textColor="#FFFFFF"
+            fontSize="44"
+            fontWeight="900"
+            paddingLeft="13"
+            paddingRight="8"
+            paddingTop="4"
+            paddingBottom="8"
+            highlightBorderRadius="8"
+            text="Big & Bold"
+            isEditable={false}
+            style={styles.textBoxLarge}
+          />
+        </View>
+
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Editable with All Props</Text>
           <HighlightTextView
             color="#B8E0D2"
@@ -224,6 +245,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   textBoxTall: {
+    width: '100%',
+    height: 120,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    backgroundColor: '#fff',
+  },
+  textBoxLarge: {
     width: '100%',
     height: 120,
     borderWidth: 1,

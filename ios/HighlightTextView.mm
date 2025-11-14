@@ -89,6 +89,7 @@ using namespace facebook::react;
     CGFloat _backgroundInsetLeft;
     CGFloat _backgroundInsetRight;
     CGFloat _lineHeight;
+    CGFloat _fontSize;
     NSString * _fontFamily;
     NSString * _fontWeight;
     BOOL _isUpdatingText;
@@ -120,6 +121,7 @@ using namespace facebook::react;
     _backgroundInsetLeft = 0.0;
     _backgroundInsetRight = 0.0;
     _lineHeight = 0.0; // 0 means use default line height
+    _fontSize = 32.0; // Default font size
     _fontFamily = nil;
     _fontWeight = @"normal";
     _currentVerticalAlignment = nil;
@@ -280,6 +282,7 @@ using namespace facebook::react;
         NSString *fontSizeStr = [[NSString alloc] initWithUTF8String: newViewProps.fontSize.c_str()];
         CGFloat fontSize = [fontSizeStr floatValue];
         if (fontSize > 0) {
+            _fontSize = fontSize;
             [self updateFont];
         }
     }
@@ -459,7 +462,7 @@ Class<RCTComponentViewProtocol> HighlightTextViewCls(void)
 
 - (void)updateFont
 {
-    CGFloat fontSize = _textView.font.pointSize;
+    CGFloat fontSize = _fontSize > 0 ? _fontSize : 32.0;
     UIFont *newFont = nil;
     
     // Parse font weight

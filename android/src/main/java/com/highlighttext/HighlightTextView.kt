@@ -264,22 +264,44 @@ class HighlightTextView : AppCompatEditText {
   }
   
   private fun updateFont() {
-    val style = when (currentFontWeight) {
-      "bold", "700", "800", "900" -> Typeface.BOLD
-      "100", "200", "300" -> Typeface.NORMAL // Android doesn't have lighter than normal
-      else -> Typeface.NORMAL
+    // Parse font weight to integer (100-900)
+    val weight = when (currentFontWeight) {
+      "100" -> 100
+      "200" -> 200
+      "300" -> 300
+      "400", "normal" -> 400
+      "500" -> 500
+      "600" -> 600
+      "700", "bold" -> 700
+      "800" -> 800
+      "900" -> 900
+      else -> 400
     }
     
-    val typeface = if (currentFontFamily != null) {
+    // Get base typeface
+    val baseTypeface = if (currentFontFamily != null) {
       when (currentFontFamily?.lowercase()) {
-        "system" -> Typeface.create(Typeface.DEFAULT, style)
-        "sans-serif" -> Typeface.create(Typeface.SANS_SERIF, style)
-        "serif" -> Typeface.create(Typeface.SERIF, style)
-        "monospace" -> Typeface.create(Typeface.MONOSPACE, style)
-        else -> Typeface.create(currentFontFamily, style)
+        "system" -> Typeface.DEFAULT
+        "sans-serif" -> Typeface.SANS_SERIF
+        "serif" -> Typeface.SERIF
+        "monospace" -> Typeface.MONOSPACE
+        else -> try {
+          Typeface.create(currentFontFamily, Typeface.NORMAL)
+        } catch (e: Exception) {
+          Typeface.DEFAULT
+        }
       }
     } else {
-      Typeface.create(Typeface.DEFAULT, style)
+      Typeface.DEFAULT
+    }
+    
+    // Apply font weight - use API 28+ method for better weight support
+    val typeface = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+      Typeface.create(baseTypeface, weight, false)
+    } else {
+      // Fallback for older Android versions
+      val style = if (weight >= 600) Typeface.BOLD else Typeface.NORMAL
+      Typeface.create(baseTypeface, style)
     }
     
     this.typeface = typeface

@@ -128,7 +128,7 @@ class HighlightTextViewManager : SimpleViewManager<HighlightTextView>(),
   @ReactProp(name = "fontSize")
   override fun setFontSize(view: HighlightTextView?, value: String?) {
     value?.toFloatOrNull()?.let { size ->
-      view?.textSize = size
+      view?.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, size)
     }
   }
 
