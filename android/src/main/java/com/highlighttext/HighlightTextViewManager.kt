@@ -88,10 +88,12 @@ class HighlightTextViewManager : SimpleViewManager<HighlightTextView>(),
       horizontalAlign = null
     }
     
-    // Determine vertical gravity
+    // Determine vertical gravity - preserve existing if not specified
     val vGravity = when (verticalAlign) {
       "top" -> Gravity.TOP
       "bottom" -> Gravity.BOTTOM
+      "center" -> Gravity.CENTER_VERTICAL
+      null -> view?.gravity?.and(Gravity.VERTICAL_GRAVITY_MASK) ?: Gravity.CENTER_VERTICAL
       else -> Gravity.CENTER_VERTICAL
     }
     
@@ -220,10 +222,15 @@ class HighlightTextViewManager : SimpleViewManager<HighlightTextView>(),
       isFocusable = value
       isFocusableInTouchMode = value
       isEnabled = value
+      // Always keep multiline flag to preserve newlines, even when not editable
       inputType = if (value) {
         InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
       } else {
-        InputType.TYPE_NULL
+        InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+      }
+      // Prevent keyboard from showing when not editable
+      if (!value) {
+        setShowSoftInputOnFocus(false)
       }
     }
   }
