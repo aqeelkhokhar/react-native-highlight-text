@@ -235,6 +235,11 @@ class HighlightTextViewManager : SimpleViewManager<HighlightTextView>(),
     }
   }
 
+  @ReactProp(name = "autoFocus")
+  override fun setAutoFocus(view: HighlightTextView?, value: Boolean) {
+    view?.setAutoFocus(value)
+  }
+
   companion object {
     const val NAME = "HighlightTextView"
   }

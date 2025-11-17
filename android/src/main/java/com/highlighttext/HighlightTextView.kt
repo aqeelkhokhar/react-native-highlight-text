@@ -363,6 +363,16 @@ class HighlightTextView : AppCompatEditText {
     }
   }
   
+  fun setAutoFocus(autoFocus: Boolean) {
+    if (autoFocus && isFocusable && isFocusableInTouchMode) {
+      post {
+        requestFocus()
+        val imm = context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+        imm?.showSoftInput(this, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+      }
+    }
+  }
+  
   private fun applyCharacterBackgrounds() {
     val text = text?.toString() ?: return
     if (text.isEmpty()) return

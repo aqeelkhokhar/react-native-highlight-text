@@ -10,7 +10,15 @@ const root = path.resolve(__dirname, '..');
  *
  * @type {import('metro-config').MetroConfig}
  */
-module.exports = withMetroConfig(getDefaultConfig(__dirname), {
-  root,
-  dirname: __dirname,
-});
+module.exports = withMetroConfig(
+  {
+    ...getDefaultConfig(__dirname),
+    server: {
+      port: 8082,
+    },
+  },
+  {
+    root,
+    dirname: __dirname,
+  }
+);

@@ -426,6 +426,14 @@ using namespace facebook::react;
         _textView.editable = newViewProps.isEditable;
     }
     
+    if (oldViewProps.autoFocus != newViewProps.autoFocus) {
+        if (newViewProps.autoFocus && _textView.isEditable) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self->_textView becomeFirstResponder];
+            });
+        }
+    }
+    
     if (oldViewProps.verticalAlign != newViewProps.verticalAlign) {
         NSString *verticalAlign = [[NSString alloc] initWithUTF8String: newViewProps.verticalAlign.c_str()];
         _currentVerticalAlignment = verticalAlign;

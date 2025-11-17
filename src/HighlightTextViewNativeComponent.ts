@@ -64,6 +64,7 @@ export interface HighlightTextViewProps extends ViewProps {
   backgroundInsetRight?: string;
   text?: string;
   isEditable?: boolean;
+  autoFocus?: boolean;
   onChange?: BubblingEventHandler<OnChangeEventData>;
 }
 
