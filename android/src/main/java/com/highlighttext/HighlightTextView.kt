@@ -96,10 +96,11 @@ class RoundedBackgroundSpan(
       insetTop + insetHeight + paddingBottom
     )
     
-    // Draw background with selective corner rounding (respects line wraps)
+    // Draw background with selective corner rounding (matches iOS behavior)
+    // iOS draws per-character backgrounds with full corner radius, so we do the same
     when {
       isReallyFirst && isReallyLast -> {
-        // Single character or isolated group - round all corners
+        // Single character or isolated group - round all corners (matches iOS)
         canvas.drawRoundRect(rect, cornerRadius, cornerRadius, bgPaint)
       }
       isReallyFirst -> {
@@ -109,8 +110,8 @@ class RoundedBackgroundSpan(
           rect,
           floatArrayOf(
             cornerRadius, cornerRadius, // top-left
-            0f, 0f,                      // top-right
-            0f, 0f,                      // bottom-right
+            0f, 0f,                      // top-right (flat for connection)
+            0f, 0f,                      // bottom-right (flat for connection)
             cornerRadius, cornerRadius   // bottom-left
           ),
           android.graphics.Path.Direction.CW
@@ -123,17 +124,17 @@ class RoundedBackgroundSpan(
         path.addRoundRect(
           rect,
           floatArrayOf(
-            0f, 0f,                      // top-left
+            0f, 0f,                      // top-left (flat for connection)
             cornerRadius, cornerRadius,  // top-right
             cornerRadius, cornerRadius,  // bottom-right
-            0f, 0f                       // bottom-left
+            0f, 0f                       // bottom-left (flat for connection)
           ),
           android.graphics.Path.Direction.CW
         )
         canvas.drawPath(path, bgPaint)
       }
       else -> {
-        // Middle character - no rounded corners, just rectangle
+        // Middle character - no rounded corners for seamless connection
         canvas.drawRect(rect, bgPaint)
       }
     }
@@ -428,9 +429,16 @@ class HighlightTextView : AppCompatEditText {
       }
     }
     
+    // Save current selection to prevent cursor jumping (smooth editing)
+    val currentSelection = selectionStart
+    
     isUpdatingText = true
     setText(spannable)
-    setSelection(text.length) // Keep cursor at end
+    
+    // Restore cursor position if valid (prevents jerking during editing)
+    if (currentSelection >= 0 && currentSelection <= text.length) {
+      setSelection(currentSelection)
+    }
     isUpdatingText = false
     
     // Detect line wraps after layout is ready
@@ -454,13 +462,19 @@ class HighlightTextView : AppCompatEditText {
         
         // Check for manual line break (\n) before this character
         val hasNewlineBefore = spanStart > 0 && textStr[spanStart - 1] == '\n'
-        // Check for manual line break (\n) after this character
+        // Check for manual line break (\n) after this character  
         val hasNewlineAfter = spanEnd < textStr.length && textStr[spanEnd] == '\n'
+        
+        // Check if this is the last line of text
+        val isLastLine = line == layout.lineCount - 1
         
         // Check if this char is at start of visual line (wrapped OR after \n)
         val isAtLineStart = (spanStart == lineStart && !span.isFirstInGroup) || hasNewlineBefore
-        // Check if this char is at end of visual line (wrapped OR before \n)
-        val isAtLineEnd = (spanEnd == lineEnd && !span.isLastInGroup) || hasNewlineAfter
+        
+        // Check if this char is at end of visual line (wrapped OR before \n OR end of last line)
+        // CRITICAL: Ensure last character of entire text gets rounded corners
+        val isAtLineEnd = (spanEnd == lineEnd && !span.isLastInGroup) || hasNewlineAfter || 
+                          (isLastLine && spanEnd == lineEnd)
         
         if (isAtLineStart || isAtLineEnd) {
           // Create new span with line boundary flags

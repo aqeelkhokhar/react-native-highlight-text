@@ -128,6 +128,46 @@ To automatically open the keyboard when the component mounts, use the `autoFocus
 
 This eliminates the need for double-tapping to open the keyboard - it will open on first render.
 
+### Dynamic Font Family Changes
+
+**IMPORTANT**: When changing `fontFamily` dynamically at runtime (especially to fonts with different ascender/descender values like Eczar, Georgia, etc.), you must use the `key` prop to force React to remount the component. This ensures the native layout recalculates with the new font metrics.
+
+**Why this is needed**: Fonts like Eczar have significantly larger vertical metrics than system fonts. Without remounting, the highlight background may appear cut off at the bottom or lose corner radius.
+
+**Solution**: Pass the `fontFamily` as the `key` prop:
+
+```jsx
+const [fontFamily, setFontFamily] = useState('system');
+
+return (
+  <HighlightTextView
+    key={fontFamily} 
+    fontFamily={fontFamily}
+    fontSize="32"
+    color="#00A4A3"
+    textColor="#FFFFFF"
+    paddingLeft="8"
+    paddingRight="8"
+    paddingTop="4"
+    paddingBottom="4"
+    backgroundInsetTop="6" 
+    backgroundInsetBottom="6"
+    highlightBorderRadius="8"
+    text="Beautiful Eczar Font"
+    style={{ width: '100%', height: 150 }}
+  />
+);
+```
+
+**What happens**:
+
+- Font changes → `key` changes → React unmounts old component and mounts new one
+- New mount → Native component calculates fresh layout with correct font metrics
+- Perfect rendering → Background highlights render correctly without cutting
+
+**Without key prop**: Background may cut off, corner radius may disappear  
+**With key prop**: Perfect rendering every time ✅
+
 ## Contributing
 
 - [Development workflow](CONTRIBUTING.md#development-workflow)
