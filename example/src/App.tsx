@@ -14,7 +14,7 @@ export default function App() {
         verticalAlign="center"
         paddingLeft={'32'}
         paddingRight={'32'}
-        // paddingTop={'12'}
+        paddingTop={'12'}
         paddingBottom={'12'}
         highlightBorderRadius="8"
         text="Hello World"
@@ -32,6 +32,6 @@ const styles = StyleSheet.create({
   },
   highlightText: {
     flex: 1,
-    // padding: 20,
+    margin: 20,
   },
 });
