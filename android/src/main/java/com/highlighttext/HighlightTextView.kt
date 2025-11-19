@@ -360,17 +360,25 @@ class HighlightTextView : AppCompatEditText {
       isUpdatingText = true
       setText(text)
       applyCharacterBackgrounds()
+      // Move cursor to end of text after setting
+      post {
+        if (hasFocus()) {
+          text.length.let { setSelection(it) }
+        }
+      }
       isUpdatingText = false
     }
   }
   
   fun setAutoFocus(autoFocus: Boolean) {
     if (autoFocus && isFocusable && isFocusableInTouchMode) {
-      post {
+      postDelayed({
         requestFocus()
+        // Move cursor to end of text
+        text?.length?.let { setSelection(it) }
         val imm = context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
-        imm?.showSoftInput(this, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
-      }
+        imm?.showSoftInput(this, android.view.inputmethod.InputMethodManager.SHOW_FORCED)
+      }, 100)
     }
   }
   
