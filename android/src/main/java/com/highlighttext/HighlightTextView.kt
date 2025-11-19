@@ -476,36 +476,40 @@ class HighlightTextView : AppCompatEditText {
         // Check if this is the last line of text
         val isLastLine = line == layout.lineCount - 1
         
-        // Check if this char is at start of visual line (wrapped OR after \n)
-        val isAtLineStart = (spanStart == lineStart && !span.isFirstInGroup) || hasNewlineBefore
+        // Check if character is at visual line start (auto-wrapped or manual newline)
+        val atVisualLineStart = spanStart == lineStart
+        // Check if character is at visual line end (auto-wrapped or manual newline)
+        val atVisualLineEnd = spanEnd == lineEnd
         
-        // Check if this char is at end of visual line (wrapped OR before \n OR end of last line)
-        // CRITICAL: Ensure last character of entire text gets rounded corners
-        val isAtLineEnd = (spanEnd == lineEnd && !span.isLastInGroup) || hasNewlineAfter || 
-                          (isLastLine && spanEnd == lineEnd)
+        // FIXED: Apply line-start padding to first character of every line
+        // This includes: first line, auto-wrapped lines, and manual newlines
+        val isAtLineStart = atVisualLineStart || hasNewlineBefore
         
-        if (isAtLineStart || isAtLineEnd) {
-          // Create new span with line boundary flags
-          val newSpan = RoundedBackgroundSpan(
-            span.backgroundColor,
-            span.textColor,
-            span.paddingLeft,
-            span.paddingRight,
-            span.paddingTop,
-            span.paddingBottom,
-            span.backgroundInsetTop,
-            span.backgroundInsetBottom,
-            span.backgroundInsetLeft,
-            span.backgroundInsetRight,
-            span.cornerRadius,
-            span.isFirstInGroup,
-            span.isLastInGroup,
-            isAtLineStart,
-            isAtLineEnd
-          )
-          text.removeSpan(span)
-          text.setSpan(newSpan, spanStart, spanEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-        }
+        // FIXED: Apply line-end padding to last character of every line
+        // This includes: auto-wrapped lines, manual newlines, and end of text
+        val isAtLineEnd = atVisualLineEnd || hasNewlineAfter
+        
+        // Always update span with current line boundary information
+        // This ensures all characters have correct flags even if they're not at boundaries
+        val newSpan = RoundedBackgroundSpan(
+          span.backgroundColor,
+          span.textColor,
+          span.paddingLeft,
+          span.paddingRight,
+          span.paddingTop,
+          span.paddingBottom,
+          span.backgroundInsetTop,
+          span.backgroundInsetBottom,
+          span.backgroundInsetLeft,
+          span.backgroundInsetRight,
+          span.cornerRadius,
+          span.isFirstInGroup,
+          span.isLastInGroup,
+          isAtLineStart,
+          isAtLineEnd
+        )
+        text.removeSpan(span)
+        text.setSpan(newSpan, spanStart, spanEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
       }
     }
     invalidate()
