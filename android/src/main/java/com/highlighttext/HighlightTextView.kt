@@ -84,31 +84,79 @@ class RoundedBackgroundSpan(
     val leftPad = if (isLineStart) paddingLeft else 0f
     val rightPad = if (isLineEnd) paddingRight else 0f
     
-    // Aggressive overlap to ensure completely seamless connection (no gaps)
-    // Extended both horizontally AND vertically for complete coverage
-    val overlapExtension = 4f
-    val leftExtend = if (!isLineStart) overlapExtension else 0f
+    // SELECTIVE ROUNDING STRATEGY:
+    // 1. Line Start: Round Left corners.
+    // 2. Line End: Round Right corners.
+    // 3. Middle: Square (no rounding).
+    // 4. Overlap: Minimal (1px) to seal seams.
+    
+    val overlapExtension = 1f
+    
+    // No extension needed for start/end boundaries
+    val leftExtend = 0f
+    
+    // Extend right slightly for middle characters to seal the gap
     val rightExtend = if (!isLineEnd) {
-      // If this is line start, extend by padding amount to bridge the gap
       if (isLineStart) leftPad + overlapExtension else overlapExtension
     } else {
       0f
     }
     
-    // Vertical overlap to eliminate gaps at top/bottom edges
-    val topExtend = overlapExtension
-    val bottomExtend = overlapExtension
+    // Vertical overlap to eliminate gaps
+    val topExtend = 4f
+    val bottomExtend = 4f
     
-    // Calculate background rect with padding only at line boundaries
+    // Calculate background rect
+    // NOTE: Since this is a ReplacementSpan, 'x' is the start of the span (including padding).
+    // So we draw from 'x', not 'x - leftPad'.
     val rect = RectF(
-      x - leftPad + backgroundInsetLeft - leftExtend,
+      x + backgroundInsetLeft - leftExtend,
       insetTop - paddingTop - topExtend,
-      x + width + rightPad - backgroundInsetRight + rightExtend,
+      x + leftPad + width + rightPad - backgroundInsetRight + rightExtend,
       insetTop + insetHeight + paddingBottom + bottomExtend
     )
     
-    // Draw rounded rect (full corners for all characters - they overlap seamlessly)
-    canvas.drawRoundRect(rect, cornerRadius, cornerRadius, bgPaint)
+    // Draw based on position
+    when {
+      isLineStart && isLineEnd -> {
+        // Single character - round all corners
+        canvas.drawRoundRect(rect, cornerRadius, cornerRadius, bgPaint)
+      }
+      isLineStart -> {
+        // Line START - round LEFT corners only
+        val path = android.graphics.Path()
+        path.addRoundRect(
+          rect,
+          floatArrayOf(
+            cornerRadius, cornerRadius, // top-left
+            0f, 0f,                      // top-right
+            0f, 0f,                      // bottom-right
+            cornerRadius, cornerRadius   // bottom-left
+          ),
+          android.graphics.Path.Direction.CW
+        )
+        canvas.drawPath(path, bgPaint)
+      }
+      isLineEnd -> {
+        // Line END - round RIGHT corners only
+        val path = android.graphics.Path()
+        path.addRoundRect(
+          rect,
+          floatArrayOf(
+            0f, 0f,                      // top-left
+            cornerRadius, cornerRadius,  // top-right
+            cornerRadius, cornerRadius,  // bottom-right
+            0f, 0f                       // bottom-left
+          ),
+          android.graphics.Path.Direction.CW
+        )
+        canvas.drawPath(path, bgPaint)
+      }
+      else -> {
+        // Middle - NO rounded corners (Square)
+        canvas.drawRect(rect, bgPaint)
+      }
+    }
     
     // Draw text offset by left padding only if at line start
     val textPaint = Paint(paint).apply {
@@ -205,27 +253,42 @@ class HighlightTextView : AppCompatEditText {
     charPaddingTop = top
     charPaddingRight = right
     charPaddingBottom = bottom
+    updateViewPadding()
     applyCharacterBackgrounds()
   }
   
   fun setCharPaddingLeft(padding: Float) {
     charPaddingLeft = padding
+    updateViewPadding()
     applyCharacterBackgrounds()
   }
   
   fun setCharPaddingRight(padding: Float) {
     charPaddingRight = padding
+    updateViewPadding()
     applyCharacterBackgrounds()
   }
   
   fun setCharPaddingTop(padding: Float) {
     charPaddingTop = padding
+    updateViewPadding()
     applyCharacterBackgrounds()
   }
   
   fun setCharPaddingBottom(padding: Float) {
     charPaddingBottom = padding
+    updateViewPadding()
     applyCharacterBackgrounds()
+  }
+  
+  private fun updateViewPadding() {
+    // Sync View padding with char padding to prevent clipping of background
+    setPadding(
+      charPaddingLeft.toInt(),
+      charPaddingTop.toInt(),
+      charPaddingRight.toInt(),
+      charPaddingBottom.toInt()
+    )
   }
   
   fun setCornerRadius(radius: Float) {
