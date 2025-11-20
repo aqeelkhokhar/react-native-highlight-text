@@ -16,6 +16,10 @@ import android.util.TypedValue
 import android.view.Gravity
 import androidx.appcompat.widget.AppCompatEditText
 
+/**
+ * iOS-style span: Draws rounded background for each character.
+ * Padding is only applied at line boundaries (first/last character of each line).
+ */
 class RoundedBackgroundSpan(
   internal val backgroundColor: Int,
   internal val textColor: Int,
@@ -28,10 +32,8 @@ class RoundedBackgroundSpan(
   internal val backgroundInsetLeft: Float,
   internal val backgroundInsetRight: Float,
   internal val cornerRadius: Float,
-  internal val isFirstInGroup: Boolean = false,
-  internal val isLastInGroup: Boolean = false,
-  private val isStartOfLine: Boolean = false,
-  private val isEndOfLine: Boolean = false
+  internal val isLineStart: Boolean = false,
+  internal val isLineEnd: Boolean = false
 ) : ReplacementSpan() {
 
   override fun getSize(
@@ -41,10 +43,10 @@ class RoundedBackgroundSpan(
     end: Int,
     fm: Paint.FontMetricsInt?
   ): Int {
+    // Only add padding at line boundaries (matches iOS behavior)
     val width = paint.measureText(text, start, end)
-    // Add padding for word boundaries AND line boundaries (for consistent alignment)
-    val leftPad = if (isFirstInGroup || isStartOfLine) paddingLeft else 0f
-    val rightPad = if (isLastInGroup || isEndOfLine) paddingRight else 0f
+    val leftPad = if (isLineStart) paddingLeft else 0f
+    val rightPad = if (isLineEnd) paddingRight else 0f
     return (width + leftPad + rightPad).toInt()
   }
 
@@ -59,7 +61,8 @@ class RoundedBackgroundSpan(
     bottom: Int,
     paint: Paint
   ) {
-    // Draw background with padding
+    if (text == null) return
+    
     val bgPaint = Paint().apply {
       color = backgroundColor
       style = Paint.Style.FILL
@@ -68,83 +71,51 @@ class RoundedBackgroundSpan(
     
     val width = paint.measureText(text, start, end)
     
-    // Use font metrics for consistent height (matches iOS behavior)
+    // Use font metrics for consistent height (matches iOS)
     val fontMetrics = paint.fontMetrics
     val textHeight = fontMetrics.descent - fontMetrics.ascent
     val textTop = y + fontMetrics.ascent
     
-    // Add padding for word AND line boundaries (consistent alignment)
-    val isReallyFirst = isFirstInGroup || isStartOfLine
-    val isReallyLast = isLastInGroup || isEndOfLine
-    val leftPad = if (isReallyFirst) paddingLeft else 0f
-    val rightPad = if (isReallyLast) paddingRight else 0f
-    
-    // Small overlap to eliminate gaps between characters
-    val overlapExtension = 2f
-    val leftOverlap = if (!isReallyFirst) overlapExtension else 0f
-    val rightOverlap = if (!isReallyLast) overlapExtension else 0f
-    
-    // Apply background insets first (shrinks from line box)
+    // Apply background insets first (shrinks from line box - EXACTLY like iOS line 45-48)
     val insetTop = textTop + backgroundInsetTop
     val insetHeight = textHeight - (backgroundInsetTop + backgroundInsetBottom)
     
-    // Calculate background rect
-    val rect = RectF(
-      x - leftOverlap + backgroundInsetLeft,
-      insetTop - paddingTop,
-      x + width + leftPad + rightPad + rightOverlap - backgroundInsetRight,
-      insetTop + insetHeight + paddingBottom
-    )
+    // Only apply padding at line boundaries (matches iOS behavior)
+    val leftPad = if (isLineStart) paddingLeft else 0f
+    val rightPad = if (isLineEnd) paddingRight else 0f
     
-    // Draw background with selective corner rounding (matches iOS behavior)
-    // iOS draws per-character backgrounds with full corner radius, so we do the same
-    when {
-      isReallyFirst && isReallyLast -> {
-        // Single character or isolated group - round all corners (matches iOS)
-        canvas.drawRoundRect(rect, cornerRadius, cornerRadius, bgPaint)
-      }
-      isReallyFirst -> {
-        // First character (word start or line start) - round left corners only
-        val path = android.graphics.Path()
-        path.addRoundRect(
-          rect,
-          floatArrayOf(
-            cornerRadius, cornerRadius, // top-left
-            0f, 0f,                      // top-right (flat for connection)
-            0f, 0f,                      // bottom-right (flat for connection)
-            cornerRadius, cornerRadius   // bottom-left
-          ),
-          android.graphics.Path.Direction.CW
-        )
-        canvas.drawPath(path, bgPaint)
-      }
-      isReallyLast -> {
-        // Last character (word end or line end) - round right corners only
-        val path = android.graphics.Path()
-        path.addRoundRect(
-          rect,
-          floatArrayOf(
-            0f, 0f,                      // top-left (flat for connection)
-            cornerRadius, cornerRadius,  // top-right
-            cornerRadius, cornerRadius,  // bottom-right
-            0f, 0f                       // bottom-left (flat for connection)
-          ),
-          android.graphics.Path.Direction.CW
-        )
-        canvas.drawPath(path, bgPaint)
-      }
-      else -> {
-        // Middle character - no rounded corners for seamless connection
-        canvas.drawRect(rect, bgPaint)
-      }
+    // Aggressive overlap to ensure completely seamless connection (no gaps)
+    // Extended both horizontally AND vertically for complete coverage
+    val overlapExtension = 4f
+    val leftExtend = if (!isLineStart) overlapExtension else 0f
+    val rightExtend = if (!isLineEnd) {
+      // If this is line start, extend by padding amount to bridge the gap
+      if (isLineStart) leftPad + overlapExtension else overlapExtension
+    } else {
+      0f
     }
     
-    // Draw text with left padding offset only if first in group
+    // Vertical overlap to eliminate gaps at top/bottom edges
+    val topExtend = overlapExtension
+    val bottomExtend = overlapExtension
+    
+    // Calculate background rect with padding only at line boundaries
+    val rect = RectF(
+      x - leftPad + backgroundInsetLeft - leftExtend,
+      insetTop - paddingTop - topExtend,
+      x + width + rightPad - backgroundInsetRight + rightExtend,
+      insetTop + insetHeight + paddingBottom + bottomExtend
+    )
+    
+    // Draw rounded rect (full corners for all characters - they overlap seamlessly)
+    canvas.drawRoundRect(rect, cornerRadius, cornerRadius, bgPaint)
+    
+    // Draw text offset by left padding only if at line start
     val textPaint = Paint(paint).apply {
       color = textColor
       isAntiAlias = true
     }
-    canvas.drawText(text!!, start, end, x + leftPad, y.toFloat(), textPaint)
+    canvas.drawText(text, start, end, x + leftPad, y.toFloat(), textPaint)
   }
 }
 
@@ -198,12 +169,21 @@ class HighlightTextView : AppCompatEditText {
     setHorizontallyScrolling(false)
     
     addTextChangedListener(object : TextWatcher {
-      override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+      private var changeStart = 0
+      private var changeEnd = 0
+      
+      override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
+        changeStart = start
+        changeEnd = start + after
+      }
+      
       override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+      
       override fun afterTextChanged(s: Editable?) {
         if (!isUpdatingText) {
           onTextChangeListener?.invoke(s?.toString() ?: "")
-          applyCharacterBackgrounds()
+          
+          applyCharacterBackgroundsIncremental(s, changeStart, changeEnd)
         }
       }
     })
@@ -360,55 +340,106 @@ class HighlightTextView : AppCompatEditText {
       isUpdatingText = true
       setText(text)
       applyCharacterBackgrounds()
+      // Move cursor to end of text after setting
+      post {
+        if (hasFocus()) {
+          text.length.let { setSelection(it) }
+        }
+      }
       isUpdatingText = false
     }
   }
   
   fun setAutoFocus(autoFocus: Boolean) {
     if (autoFocus && isFocusable && isFocusableInTouchMode) {
-      post {
+      postDelayed({
         requestFocus()
+        // Move cursor to end of text
+        text?.length?.let { setSelection(it) }
         val imm = context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
-        imm?.showSoftInput(this, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
-      }
+        imm?.showSoftInput(this, android.view.inputmethod.InputMethodManager.SHOW_FORCED)
+      }, 100)
     }
   }
   
-  private fun applyCharacterBackgrounds() {
-    val text = text?.toString() ?: return
-    if (text.isEmpty()) return
+  /**
+   * iOS-style incremental update: Only update spans for changed region.
+   * This is called during typing and only touches the modified characters.
+   */
+  private fun applyCharacterBackgroundsIncremental(editable: Editable?, start: Int, end: Int) {
+    if (editable == null) return
+    val textStr = editable.toString()
+    if (textStr.isEmpty()) return
     
-    val spannable = SpannableString(text)
+    isUpdatingText = true
     
-    // Apply line height if specified
-    if (customLineHeight > 0) {
-      val lineSpacingMultiplier = customLineHeight / textSize
-      setLineSpacing(0f, lineSpacingMultiplier)
+    // Check if a newline was inserted - if so, expand region to include char before it
+    val hasNewline = textStr.substring(start, minOf(end, textStr.length)).contains('\n')
+    
+    // Expand the region to include entire lines that were affected
+    val layout = layout
+    val expandedStart: Int
+    val expandedEnd: Int
+    
+    if (layout != null && textStr.isNotEmpty()) {
+      val startLine = layout.getLineForOffset(minOf(start, textStr.length - 1))
+      val endLine = layout.getLineForOffset(minOf(end, textStr.length - 1))
+      expandedStart = layout.getLineStart(startLine)
+      expandedEnd = layout.getLineEnd(endLine)
+    } else {
+      // If newline inserted, include character before it
+      expandedStart = if (hasNewline) maxOf(0, start - 2) else maxOf(0, start - 1)
+      expandedEnd = minOf(textStr.length, end + 1)
     }
     
-    // Apply character-by-character for proper line wrapping
-    for (i in text.indices) {
-      val char = text[i]
+    // Remove existing spans in the affected lines
+    val existingSpans = editable.getSpans(expandedStart, expandedEnd, RoundedBackgroundSpan::class.java)
+    for (span in existingSpans) {
+      editable.removeSpan(span)
+    }
+    
+    // Apply spans with correct line boundary flags immediately
+    val radius = if (highlightBorderRadius > 0) highlightBorderRadius else cornerRadius
+    
+    for (i in expandedStart until expandedEnd) {
+      if (i >= textStr.length) break
       
-      // Check if this is a space that should be highlighted
+      val char = textStr[i]
       val shouldHighlight = when {
-        char == '\n' || char == '\t' -> false // Never highlight newlines or tabs
+        char == '\n' || char == '\t' -> false
         char == ' ' -> {
-          // Highlight space only if it's a single space (not multiple consecutive)
-          val hasSpaceBefore = i > 0 && text[i - 1] == ' '
-          val hasSpaceAfter = i < text.length - 1 && text[i + 1] == ' '
+          val hasSpaceBefore = i > 0 && textStr[i - 1] == ' '
+          val hasSpaceAfter = i < textStr.length - 1 && textStr[i + 1] == ' '
           !hasSpaceBefore && !hasSpaceAfter
         }
-        else -> true // Highlight all other characters
+        else -> true
       }
       
       if (shouldHighlight) {
-        // Determine if this is the first or last character in a word group
-        val isFirst = i == 0 || !shouldHighlightChar(text, i - 1)
-        val isLast = i == text.length - 1 || !shouldHighlightChar(text, i + 1)
+        // ALWAYS check newlines first (for manual line breaks)
+        val hasNewlineBefore = i > 0 && textStr[i - 1] == '\n'
+        val hasNewlineAfter = i + 1 < textStr.length && textStr[i + 1] == '\n'
         
-        // Use highlightBorderRadius if specified, otherwise use cornerRadius (matches iOS)
-        val radius = if (highlightBorderRadius > 0) highlightBorderRadius else cornerRadius
+        var isAtLineStart = i == 0 || hasNewlineBefore
+        var isAtLineEnd = i == textStr.length - 1 || hasNewlineAfter
+        
+        // Only use layout for auto-wrapped lines (not manual newlines)
+        if (!hasNewlineBefore && !hasNewlineAfter && layout != null && i < textStr.length) {
+          try {
+            val line = layout.getLineForOffset(i)
+            val lineStart = layout.getLineStart(line)
+            val lineEnd = layout.getLineEnd(line)
+            // Only override if this is an auto-wrapped boundary
+            if (i == lineStart && textStr.getOrNull(i - 1) != '\n') {
+              isAtLineStart = true
+            }
+            if ((i + 1) == lineEnd && textStr.getOrNull(i + 1) != '\n') {
+              isAtLineEnd = true
+            }
+          } catch (e: Exception) {
+            // Layout might not be ready, keep newline-based detection
+          }
+        }
         
         val span = RoundedBackgroundSpan(
           characterBackgroundColor,
@@ -422,62 +453,160 @@ class HighlightTextView : AppCompatEditText {
           backgroundInsetLeft,
           backgroundInsetRight,
           radius,
-          isFirst,
-          isLast
+          isAtLineStart,
+          isAtLineEnd
         )
-        spannable.setSpan(span, i, i + 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        editable.setSpan(span, i, i + 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
       }
     }
     
-    // Save current selection to prevent cursor jumping (smooth editing)
-    val currentSelection = selectionStart
-    
-    isUpdatingText = true
-    setText(spannable)
-    
-    // Restore cursor position if valid (prevents jerking during editing)
-    if (currentSelection >= 0 && currentSelection <= text.length) {
-      setSelection(currentSelection)
-    }
     isUpdatingText = false
     
-    // Detect line wraps after layout is ready
-    post { detectLineWraps() }
+    // JERK FIX: Skip the post-update during fast typing to prevent layout thrashing
+    // Only update boundaries when user stops typing (reduces update frequency)
+    removeCallbacks(boundaryUpdateCheck)
+    postDelayed(boundaryUpdateCheck, 200)
   }
   
-  private fun detectLineWraps() {
+  // Runnable for delayed boundary check
+  private val boundaryUpdateCheck = Runnable {
+    if (!isUpdatingText) {
+      updateAutoWrappedLineBoundaries()
+    }
+  }
+  
+  /**
+   * Full re-application of spans (used when props change, not during typing).
+   * iOS-style: Work directly with editable, no setText() call.
+   */
+  private fun applyCharacterBackgrounds() {
+    val editable = editableText ?: return
+    val textStr = editable.toString()
+    if (textStr.isEmpty()) return
+    
+    // Apply line height if specified
+    if (customLineHeight > 0) {
+      val lineSpacingMultiplier = customLineHeight / textSize
+      setLineSpacing(0f, lineSpacingMultiplier)
+    }
+    
+    isUpdatingText = true
+    
+    // Remove all existing spans
+    val existingSpans = editable.getSpans(0, editable.length, RoundedBackgroundSpan::class.java)
+    for (span in existingSpans) {
+      editable.removeSpan(span)
+    }
+    
+    // Apply spans to all characters with correct line boundary flags
+    val radius = if (highlightBorderRadius > 0) highlightBorderRadius else cornerRadius
+    val layoutObj = layout
+    
+    for (i in textStr.indices) {
+      val char = textStr[i]
+      
+      val shouldHighlight = when {
+        char == '\n' || char == '\t' -> false
+        char == ' ' -> {
+          val hasSpaceBefore = i > 0 && textStr[i - 1] == ' '
+          val hasSpaceAfter = i < textStr.length - 1 && textStr[i + 1] == ' '
+          !hasSpaceBefore && !hasSpaceAfter
+        }
+        else -> true
+      }
+      
+      if (shouldHighlight) {
+        // ALWAYS check newlines first (for manual line breaks)
+        val hasNewlineBefore = i > 0 && textStr[i - 1] == '\n'
+        val hasNewlineAfter = i + 1 < textStr.length && textStr[i + 1] == '\n'
+        
+        var isAtLineStart = i == 0 || hasNewlineBefore
+        var isAtLineEnd = i == textStr.length - 1 || hasNewlineAfter
+        
+        // Only use layout for auto-wrapped lines (not manual newlines)
+        if (!hasNewlineBefore && !hasNewlineAfter && layoutObj != null && i < textStr.length) {
+          try {
+            val line = layoutObj.getLineForOffset(i)
+            val lineStart = layoutObj.getLineStart(line)
+            val lineEnd = layoutObj.getLineEnd(line)
+            // Only override if this is an auto-wrapped boundary
+            if (i == lineStart && textStr.getOrNull(i - 1) != '\n') {
+              isAtLineStart = true
+            }
+            if ((i + 1) == lineEnd && textStr.getOrNull(i + 1) != '\n') {
+              isAtLineEnd = true
+            }
+          } catch (e: Exception) {
+            // Layout might not be ready, keep newline-based detection
+          }
+        }
+        
+        val span = RoundedBackgroundSpan(
+          characterBackgroundColor,
+          textColorValue,
+          charPaddingLeft,
+          charPaddingRight,
+          charPaddingTop,
+          charPaddingBottom,
+          backgroundInsetTop,
+          backgroundInsetBottom,
+          backgroundInsetLeft,
+          backgroundInsetRight,
+          radius,
+          isAtLineStart,
+          isAtLineEnd
+        )
+        editable.setSpan(span, i, i + 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+      }
+    }
+    
+    isUpdatingText = false
+  }
+  
+  /**
+   * Update line boundary flags only for auto-wrapped lines.
+   * This is called after layout completes to handle text wrapping.
+   * Only updates spans that are at auto-wrapped line boundaries.
+   * Optimized to skip updates when layout hasn't changed.
+   */
+  private fun updateAutoWrappedLineBoundaries() {
+    if (isUpdatingText) return
+    
     val layout = layout ?: return
-    val text = text as? Spannable ?: return
-    val textStr = text.toString()
-    val spans = text.getSpans(0, text.length, RoundedBackgroundSpan::class.java)
+    val editable = editableText ?: return
+    val textStr = editable.toString()
+    if (textStr.isEmpty()) return
+    
+    // Validate that layout is ready and has valid dimensions
+    if (width <= 0 || layout.lineCount == 0) return
+    
+    val spans = editable.getSpans(0, editable.length, RoundedBackgroundSpan::class.java)
+    if (spans.isEmpty()) return
+    
+    isUpdatingText = true
+    var hasChanges = false
     
     for (span in spans) {
-      val spanStart = text.getSpanStart(span)
-      val spanEnd = text.getSpanEnd(span)
+      val spanStart = editable.getSpanStart(span)
+      val spanEnd = editable.getSpanEnd(span)
       
-      if (spanStart >= 0 && spanStart < text.length) {
+      if (spanStart < 0 || spanStart >= textStr.length) continue
+      
+      try {
         val line = layout.getLineForOffset(spanStart)
         val lineStart = layout.getLineStart(line)
         val lineEnd = layout.getLineEnd(line)
         
-        // Check for manual line break (\n) before this character
-        val hasNewlineBefore = spanStart > 0 && textStr[spanStart - 1] == '\n'
-        // Check for manual line break (\n) after this character  
-        val hasNewlineAfter = spanEnd < textStr.length && textStr[spanEnd] == '\n'
+        // Determine actual line boundaries (includes auto-wrap)
+        val isAtLineStart = spanStart == lineStart
+        val isAtLineEnd = spanEnd == lineEnd
         
-        // Check if this is the last line of text
-        val isLastLine = line == layout.lineCount - 1
+        // Only update if this is an auto-wrapped line boundary (not a newline boundary)
+        val isNewlineBoundary = (spanStart > 0 && textStr[spanStart - 1] == '\n') || 
+                                (spanEnd < textStr.length && textStr[spanEnd] == '\n')
         
-        // Check if this char is at start of visual line (wrapped OR after \n)
-        val isAtLineStart = (spanStart == lineStart && !span.isFirstInGroup) || hasNewlineBefore
-        
-        // Check if this char is at end of visual line (wrapped OR before \n OR end of last line)
-        // CRITICAL: Ensure last character of entire text gets rounded corners
-        val isAtLineEnd = (spanEnd == lineEnd && !span.isLastInGroup) || hasNewlineAfter || 
-                          (isLastLine && spanEnd == lineEnd)
-        
-        if (isAtLineStart || isAtLineEnd) {
-          // Create new span with line boundary flags
+        // Only recreate span if it's at an auto-wrapped boundary and flags are wrong
+        if (!isNewlineBoundary && (isAtLineStart != span.isLineStart || isAtLineEnd != span.isLineEnd)) {
           val newSpan = RoundedBackgroundSpan(
             span.backgroundColor,
             span.textColor,
@@ -490,31 +619,24 @@ class HighlightTextView : AppCompatEditText {
             span.backgroundInsetLeft,
             span.backgroundInsetRight,
             span.cornerRadius,
-            span.isFirstInGroup,
-            span.isLastInGroup,
             isAtLineStart,
             isAtLineEnd
           )
-          text.removeSpan(span)
-          text.setSpan(newSpan, spanStart, spanEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+          editable.removeSpan(span)
+          editable.setSpan(newSpan, spanStart, spanEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+          hasChanges = true
         }
+      } catch (e: Exception) {
+        // Layout state is invalid, skip this update
+        continue
       }
     }
-    invalidate()
-  }
-  
-  private fun shouldHighlightChar(text: String, index: Int): Boolean {
-    if (index < 0 || index >= text.length) return false
-    val char = text[index]
     
-    return when {
-      char == '\n' || char == '\t' -> false
-      char == ' ' -> {
-        val hasSpaceBefore = index > 0 && text[index - 1] == ' '
-        val hasSpaceAfter = index < text.length - 1 && text[index + 1] == ' '
-        !hasSpaceBefore && !hasSpaceAfter
-      }
-      else -> true
+    isUpdatingText = false
+    
+    // Only invalidate if we actually made changes
+    if (hasChanges) {
+      invalidate()
     }
   }
 }
