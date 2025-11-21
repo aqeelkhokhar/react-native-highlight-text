@@ -46,6 +46,8 @@ class HighlightTextView : AppCompatEditText {
   private var currentFontFamily: String? = null
   private var currentFontWeight: String = "normal"
   private var currentVerticalAlign: String? = null
+  // Letter spacing in layout points (same semantics as React Native's letterSpacing prop)
+  private var letterSpacingPoints: Float = 0f
 
   // Internal flags
   private var isUpdatingText: Boolean = false
@@ -354,9 +356,16 @@ class HighlightTextView : AppCompatEditText {
     invalidate()
   }
 
+  fun setLetterSpacingProp(points: Float) {
+    letterSpacingPoints = points
+    applyLetterSpacing()
+    invalidate()
+  }
+
   override fun setTextSize(unit: Int, size: Float) {
     super.setTextSize(unit, size)
     applyLineHeightAndSpacing()
+    applyLetterSpacing()
   }
 
   fun setTextProp(newText: String) {
@@ -402,6 +411,19 @@ class HighlightTextView : AppCompatEditText {
       // Default: add extra spacing equal to vertical padding so backgrounds don't collide
       val extraSpacing = charPaddingTop + charPaddingBottom
       setLineSpacing(extraSpacing, 1.0f)
+    }
+  }
+
+  private fun applyLetterSpacing() {
+    // React Native's letterSpacing is specified in layout points. Convert that to
+    // Android's "em" units: pxSpacing / textSizePx.
+    val metrics = resources.displayMetrics
+    val pxSpacing = letterSpacingPoints * metrics.scaledDensity
+    val textPx = textSize
+    if (textPx > 0f) {
+      super.setLetterSpacing(pxSpacing / textPx)
+    } else {
+      super.setLetterSpacing(0f)
     }
   }
 }

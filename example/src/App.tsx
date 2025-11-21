@@ -16,10 +16,12 @@ export default function App() {
         paddingRight={'32'}
         paddingTop={'12'}
         paddingBottom={'12'}
-        highlightBorderRadius="8"
+        highlightBorderRadius="18"
         text="Hello World"
         autoFocus={true}
         style={styles.highlightText}
+        backgroundInsetLeft="18"
+        // letterSpacing='-0.8'
       />
     </SafeAreaView>
   );

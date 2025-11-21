@@ -90,6 +90,7 @@ using namespace facebook::react;
     CGFloat _backgroundInsetRight;
     CGFloat _lineHeight;
     CGFloat _fontSize;
+    CGFloat _letterSpacing; // in layout points, matches React Native's letterSpacing
     NSString * _fontFamily;
     NSString * _fontWeight;
     BOOL _isUpdatingText;
@@ -122,6 +123,7 @@ using namespace facebook::react;
     _backgroundInsetRight = 0.0;
     _lineHeight = 0.0; // 0 means use default line height
     _fontSize = 32.0; // Default font size
+    _letterSpacing = 0.0; // Default: no extra spacing
     _fontFamily = nil;
     _fontWeight = @"normal";
     _currentVerticalAlignment = nil;
@@ -294,6 +296,13 @@ using namespace facebook::react;
             _lineHeight = lineHeight;
             [self applyCharacterBackgrounds]; // Reapply to update line height
         }
+    }
+    
+    if (oldViewProps.letterSpacing != newViewProps.letterSpacing) {
+        NSString *spacingStr = [[NSString alloc] initWithUTF8String: newViewProps.letterSpacing.c_str()];
+        CGFloat spacing = [spacingStr floatValue];
+        _letterSpacing = spacing;
+        [self applyCharacterBackgrounds]; // Reapply to update glyph layout
     }
     
     if (oldViewProps.highlightBorderRadius != newViewProps.highlightBorderRadius) {
@@ -536,6 +545,13 @@ Class<RCTComponentViewProtocol> HighlightTextViewCls(void)
     [attributedString addAttribute:NSFontAttributeName 
                              value:_textView.font 
                              range:NSMakeRange(0, text.length)];
+    
+    // Apply letter spacing (kern) if specified
+    if (_letterSpacing != 0) {
+        [attributedString addAttribute:NSKernAttributeName
+                                 value:@(_letterSpacing)
+                                 range:NSMakeRange(0, text.length)];
+    }
     
     // Apply text color if available
     if (_textView.textColor) {
