@@ -33,7 +33,9 @@ class RoundedBackgroundSpan(
   internal val backgroundInsetRight: Float,
   internal val cornerRadius: Float,
   internal val isLineStart: Boolean = false,
-  internal val isLineEnd: Boolean = false
+  internal val isLineEnd: Boolean = false,
+  internal val isFirstLine: Boolean = false,
+  internal val isLastLine: Boolean = false
 ) : ReplacementSpan() {
 
   override fun getSize(
@@ -102,9 +104,9 @@ class RoundedBackgroundSpan(
       0f
     }
     
-    // Vertical overlap to eliminate gaps
-    val topExtend = 4f
-    val bottomExtend = 4f
+    // Vertical overlap to eliminate gaps (reduced to prevent descender clipping)
+    val topExtend = 0f
+    val bottomExtend = 0f
     
     // Calculate background rect
     // NOTE: Since this is a ReplacementSpan, 'x' is the start of the span (including padding).
@@ -123,37 +125,37 @@ class RoundedBackgroundSpan(
         canvas.drawRoundRect(rect, cornerRadius, cornerRadius, bgPaint)
       }
       isLineStart -> {
-        // Line START - round LEFT corners only
+        // Line START - round LEFT corners (top and bottom)
         val path = android.graphics.Path()
         path.addRoundRect(
           rect,
           floatArrayOf(
-            cornerRadius, cornerRadius, // top-left
-            0f, 0f,                      // top-right
-            0f, 0f,                      // bottom-right
-            cornerRadius, cornerRadius   // bottom-left
+            cornerRadius, cornerRadius,  // top-left
+            0f, 0f,                       // top-right
+            0f, 0f,                       // bottom-right
+            cornerRadius, cornerRadius    // bottom-left
           ),
           android.graphics.Path.Direction.CW
         )
         canvas.drawPath(path, bgPaint)
       }
       isLineEnd -> {
-        // Line END - round RIGHT corners only
+        // Line END - round RIGHT corners (top and bottom)
         val path = android.graphics.Path()
         path.addRoundRect(
           rect,
           floatArrayOf(
-            0f, 0f,                      // top-left
-            cornerRadius, cornerRadius,  // top-right
-            cornerRadius, cornerRadius,  // bottom-right
-            0f, 0f                       // bottom-left
+            0f, 0f,                       // top-left
+            cornerRadius, cornerRadius,   // top-right
+            cornerRadius, cornerRadius,   // bottom-right
+            0f, 0f                        // bottom-left
           ),
           android.graphics.Path.Direction.CW
         )
         canvas.drawPath(path, bgPaint)
       }
       else -> {
-        // Middle - NO rounded corners (Square)
+        // Middle characters - NO rounded corners (square) for smooth edges
         canvas.drawRect(rect, bgPaint)
       }
     }
@@ -486,12 +488,19 @@ class HighlightTextView : AppCompatEditText {
         var isAtLineStart = i == 0 || hasNewlineBefore
         var isAtLineEnd = i == textStr.length - 1 || hasNewlineAfter
         
+        // Determine if this is the first or last line
+        var isOnFirstLine = i == 0 || hasNewlineBefore
+        var isOnLastLine = i == textStr.length - 1 || hasNewlineAfter
+        
         // Only use layout for auto-wrapped lines (not manual newlines)
         if (!hasNewlineBefore && !hasNewlineAfter && layout != null && i < textStr.length) {
           try {
             val line = layout.getLineForOffset(i)
             val lineStart = layout.getLineStart(line)
             val lineEnd = layout.getLineEnd(line)
+            // Check if this is the first or last line
+            isOnFirstLine = line == 0
+            isOnLastLine = line == layout.lineCount - 1
             // Only override if this is an auto-wrapped boundary
             if (i == lineStart && textStr.getOrNull(i - 1) != '\n') {
               isAtLineStart = true
@@ -517,7 +526,9 @@ class HighlightTextView : AppCompatEditText {
           backgroundInsetRight,
           radius,
           isAtLineStart,
-          isAtLineEnd
+          isAtLineEnd,
+          isOnFirstLine,
+          isOnLastLine
         )
         editable.setSpan(span, i, i + 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
       }
@@ -547,10 +558,14 @@ class HighlightTextView : AppCompatEditText {
     val textStr = editable.toString()
     if (textStr.isEmpty()) return
     
-    // Apply line height if specified
+    // Apply line height if specified, or add spacing for padding
     if (customLineHeight > 0) {
       val lineSpacingMultiplier = customLineHeight / textSize
       setLineSpacing(0f, lineSpacingMultiplier)
+    } else {
+      // Add line spacing to accommodate vertical padding and prevent overlap
+      val extraSpacing = charPaddingTop + charPaddingBottom
+      setLineSpacing(extraSpacing, 1.0f)
     }
     
     isUpdatingText = true
@@ -586,12 +601,19 @@ class HighlightTextView : AppCompatEditText {
         var isAtLineStart = i == 0 || hasNewlineBefore
         var isAtLineEnd = i == textStr.length - 1 || hasNewlineAfter
         
+        // Determine if this is the first or last line
+        var isOnFirstLine = i == 0 || hasNewlineBefore
+        var isOnLastLine = i == textStr.length - 1 || hasNewlineAfter
+        
         // Only use layout for auto-wrapped lines (not manual newlines)
         if (!hasNewlineBefore && !hasNewlineAfter && layoutObj != null && i < textStr.length) {
           try {
             val line = layoutObj.getLineForOffset(i)
             val lineStart = layoutObj.getLineStart(line)
             val lineEnd = layoutObj.getLineEnd(line)
+            // Check if this is the first or last line
+            isOnFirstLine = line == 0
+            isOnLastLine = line == layoutObj.lineCount - 1
             // Only override if this is an auto-wrapped boundary
             if (i == lineStart && textStr.getOrNull(i - 1) != '\n') {
               isAtLineStart = true
@@ -617,13 +639,23 @@ class HighlightTextView : AppCompatEditText {
           backgroundInsetRight,
           radius,
           isAtLineStart,
-          isAtLineEnd
+          isAtLineEnd,
+          isOnFirstLine,
+          isOnLastLine
         )
         editable.setSpan(span, i, i + 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
       }
     }
     
     isUpdatingText = false
+    
+    // Schedule a post-layout update to ensure corner rounding is correct
+    // This is needed because layout might not be ready when this method is called
+    post {
+      if (!isUpdatingText) {
+        updateAutoWrappedLineBoundaries()
+      }
+    }
   }
   
   /**
@@ -664,12 +696,17 @@ class HighlightTextView : AppCompatEditText {
         val isAtLineStart = spanStart == lineStart
         val isAtLineEnd = spanEnd == lineEnd
         
+        // Check if this is the first or last line
+        val isOnFirstLine = line == 0
+        val isOnLastLine = line == layout.lineCount - 1
+        
         // Only update if this is an auto-wrapped line boundary (not a newline boundary)
         val isNewlineBoundary = (spanStart > 0 && textStr[spanStart - 1] == '\n') || 
                                 (spanEnd < textStr.length && textStr[spanEnd] == '\n')
         
         // Only recreate span if it's at an auto-wrapped boundary and flags are wrong
-        if (!isNewlineBoundary && (isAtLineStart != span.isLineStart || isAtLineEnd != span.isLineEnd)) {
+        if (!isNewlineBoundary && (isAtLineStart != span.isLineStart || isAtLineEnd != span.isLineEnd || 
+            isOnFirstLine != span.isFirstLine || isOnLastLine != span.isLastLine)) {
           val newSpan = RoundedBackgroundSpan(
             span.backgroundColor,
             span.textColor,
@@ -683,7 +720,9 @@ class HighlightTextView : AppCompatEditText {
             span.backgroundInsetRight,
             span.cornerRadius,
             isAtLineStart,
-            isAtLineEnd
+            isAtLineEnd,
+            isOnFirstLine,
+            isOnLastLine
           )
           editable.removeSpan(span)
           editable.setSpan(newSpan, spanStart, spanEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
