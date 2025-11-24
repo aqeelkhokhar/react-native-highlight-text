@@ -12,6 +12,7 @@ import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.Gravity
 import androidx.appcompat.widget.AppCompatEditText
+import com.facebook.react.common.assets.ReactFontManager
 
 /**
  * Custom EditText that mimics the iOS implementation by drawing per-character
@@ -281,15 +282,20 @@ class HighlightTextView : AppCompatEditText {
       else -> 400
     }
 
-    // Get base typeface
-    val baseTypeface = if (currentFontFamily != null) {
-      when (currentFontFamily?.lowercase()) {
+    // Capture currentFontFamily as local variable to avoid smart cast issues
+    val fontFamily = currentFontFamily
+
+    // Get base typeface using ReactFontManager for custom fonts
+    val baseTypeface = if (fontFamily != null) {
+      when (fontFamily.lowercase()) {
         "system" -> Typeface.DEFAULT
         "sans-serif" -> Typeface.SANS_SERIF
         "serif" -> Typeface.SERIF
         "monospace" -> Typeface.MONOSPACE
         else -> try {
-          Typeface.create(currentFontFamily, Typeface.NORMAL)
+          // Use ReactFontManager to load custom fonts from assets
+          val style = if (weight >= 600) Typeface.BOLD else Typeface.NORMAL
+          ReactFontManager.getInstance().getTypeface(fontFamily, style, context.assets)
         } catch (e: Exception) {
           Typeface.DEFAULT
         }
