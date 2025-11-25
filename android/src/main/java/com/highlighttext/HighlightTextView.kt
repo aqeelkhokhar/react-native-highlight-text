@@ -206,35 +206,40 @@ class HighlightTextView : AppCompatEditText {
     charPaddingBottom = bottom
     updateViewPadding()
     applyLineHeightAndSpacing()
-    invalidate()
+    requestLayout()
+    post { invalidate() }
   }
 
   fun setCharPaddingLeft(padding: Float) {
     charPaddingLeft = padding
     updateViewPadding()
     applyLineHeightAndSpacing()
-    invalidate()
+    requestLayout()
+    post { invalidate() }
   }
 
   fun setCharPaddingRight(padding: Float) {
     charPaddingRight = padding
     updateViewPadding()
     applyLineHeightAndSpacing()
-    invalidate()
+    requestLayout()
+    post { invalidate() }
   }
 
   fun setCharPaddingTop(padding: Float) {
     charPaddingTop = padding
     updateViewPadding()
     applyLineHeightAndSpacing()
-    invalidate()
+    requestLayout()
+    post { invalidate() }
   }
 
   fun setCharPaddingBottom(padding: Float) {
     charPaddingBottom = padding
     updateViewPadding()
     applyLineHeightAndSpacing()
-    invalidate()
+    requestLayout()
+    post { invalidate() }
   }
 
   private fun updateViewPadding() {
@@ -315,7 +320,10 @@ class HighlightTextView : AppCompatEditText {
 
     this.typeface = typeface
     applyLineHeightAndSpacing()
-    invalidate()
+    // Request layout to ensure proper measurement with new font before redrawing
+    requestLayout()
+    // Post invalidate to ensure layout is complete before drawing
+    post { invalidate() }
   }
 
   fun setVerticalAlign(align: String?) {
@@ -359,7 +367,8 @@ class HighlightTextView : AppCompatEditText {
   fun setCustomLineHeight(lineHeight: Float) {
     customLineHeight = lineHeight
     applyLineHeightAndSpacing()
-    invalidate()
+    requestLayout()
+    post { invalidate() }
   }
 
   fun setLetterSpacingProp(points: Float) {
@@ -372,6 +381,8 @@ class HighlightTextView : AppCompatEditText {
     super.setTextSize(unit, size)
     applyLineHeightAndSpacing()
     applyLetterSpacing()
+    requestLayout()
+    post { invalidate() }
   }
 
   fun setTextProp(newText: String) {
