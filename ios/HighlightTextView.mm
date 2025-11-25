@@ -439,6 +439,8 @@ using namespace facebook::react;
         if (newViewProps.autoFocus && _textView.isEditable) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 [self->_textView becomeFirstResponder];
+                NSUInteger textLength = self->_textView.text.length;
+                self->_textView.selectedRange = NSMakeRange(textLength, 0);
             });
         }
     }
