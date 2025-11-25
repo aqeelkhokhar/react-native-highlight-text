@@ -134,6 +134,13 @@ class HighlightTextViewManager : SimpleViewManager<HighlightTextView>(),
     }
   }
 
+  @ReactProp(name = "letterSpacing")
+  override fun setLetterSpacing(view: HighlightTextView?, value: String?) {
+    value?.toFloatOrNull()?.let { spacing ->
+      view?.setLetterSpacingProp(spacing)
+    }
+  }
+
   @ReactProp(name = "padding")
   override fun setPadding(view: HighlightTextView?, value: String?) {
     value?.toFloatOrNull()?.let { padding ->
