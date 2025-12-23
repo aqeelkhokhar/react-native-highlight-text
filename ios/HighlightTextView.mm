@@ -281,9 +281,13 @@ using namespace facebook::react;
             _currentVerticalAlignment = verticalPart;
             [self updateVerticalAlignment:verticalPart];
         } else if (!verticalPart && horizontalPart) {
-            // Default vertical centering for horizontal-only alignments
-            _currentVerticalAlignment = nil;
-            _textView.textContainerInset = UIEdgeInsetsMake(10, 10, 10, 10);
+            // Preserve existing vertical alignment when only horizontal alignment is specified
+            if (_currentVerticalAlignment) {
+                [self updateVerticalAlignment:_currentVerticalAlignment];
+            } else {
+                // Default vertical centering only if no vertical alignment was previously set
+                _textView.textContainerInset = UIEdgeInsetsMake(10, 10, 10, 10);
+            }
         }
         
         [self applyCharacterBackgrounds]; // Reapply to update alignment

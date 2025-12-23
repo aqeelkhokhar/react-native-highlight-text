@@ -1,6 +1,6 @@
 {
   "name": "react-native-highlight-text-view",
-  "version": "0.1.29",
+  "version": "0.1.30",
   "description": "A native text input for React Native that supports inline text highlighting",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
@@ -18,7 +18,7 @@
     "android",
     "ios",
     "cpp",
-    "*.podspec",  
+    "*.podspec",
     "react-native.config.js",
     "!ios/build",
     "!android/build",
