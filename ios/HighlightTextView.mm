@@ -28,20 +28,29 @@ using namespace facebook::react;
                 NSRange glyphRange = [self glyphRangeForCharacterRange:charRange actualCharacterRange:NULL];
                 
                 if (glyphRange.length > 0) {
-                    // Get the actual character to ensure it's not a whitespace or control character
                     unichar character = [textStorage.string characterAtIndex:i];
                     if (character == '\n' || character == '\r' || character == ' ' || character == '\t') {
                         continue;
                     }
                     
-                    CGRect boundingRect = [self boundingRectForGlyphRange:glyphRange inTextContainer:textContainer];
+                    CGPoint glyphLocation = [self locationForGlyphAtIndex:glyphRange.location];
+                    NSUInteger lineIndex = [self lineFragmentRectForGlyphAtIndex:glyphRange.location effectiveRange:NULL].origin.y;
+                    CGRect lineRect = [self lineFragmentRectForGlyphAtIndex:glyphRange.location effectiveRange:NULL];
                     
-                    // Ensure the glyph has reasonable dimensions and isn't a line fragment artifact
-                    // Also check that it's not spanning the full container width (which indicates line wrapping issues)
-                    if (boundingRect.size.width > 1.0 && boundingRect.size.height > 1.0 && 
-                        boundingRect.size.width < (textContainer.size.width * 0.8)) {
+                    NSDictionary *attributes = [textStorage attributesAtIndex:i effectiveRange:NULL];
+                    UIFont *font = attributes[NSFontAttributeName];
+                    NSString *charString = [textStorage.string substringWithRange:NSMakeRange(i, 1)];
+                    CGSize charSize = [charString sizeWithAttributes:@{NSFontAttributeName: font}];
+                    
+                    CGRect boundingRect = CGRectMake(
+                        glyphLocation.x,
+                        lineRect.origin.y,
+                        charSize.width,
+                        lineRect.size.height
+                    );
+                    
+                    if (boundingRect.size.width > 1.0 && boundingRect.size.height > 1.0) {
                         
-                        // Apply background insets first (shrinks from line box)
                         boundingRect.origin.y += self.backgroundInsetTop;
                         boundingRect.size.height -= (self.backgroundInsetTop + self.backgroundInsetBottom);
                         boundingRect.origin.x += self.backgroundInsetLeft;
@@ -272,9 +281,13 @@ using namespace facebook::react;
             _currentVerticalAlignment = verticalPart;
             [self updateVerticalAlignment:verticalPart];
         } else if (!verticalPart && horizontalPart) {
-            // Default vertical centering for horizontal-only alignments
-            _currentVerticalAlignment = nil;
-            _textView.textContainerInset = UIEdgeInsetsMake(10, 10, 10, 10);
+            // Preserve existing vertical alignment when only horizontal alignment is specified
+            if (_currentVerticalAlignment) {
+                [self updateVerticalAlignment:_currentVerticalAlignment];
+            } else {
+                // Default vertical centering only if no vertical alignment was previously set
+                _textView.textContainerInset = UIEdgeInsetsMake(10, 10, 10, 10);
+            }
         }
         
         [self applyCharacterBackgrounds]; // Reapply to update alignment
