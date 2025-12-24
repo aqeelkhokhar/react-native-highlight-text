@@ -88,6 +88,7 @@ class HighlightTextView : AppCompatEditText {
     maxLines = Int.MAX_VALUE
     isSingleLine = false
     setHorizontallyScrolling(false)
+    includeFontPadding = false
 
     applyLineHeightAndSpacing()
 

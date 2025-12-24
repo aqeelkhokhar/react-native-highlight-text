@@ -14,9 +14,9 @@ export default function App() {
         verticalAlign="center"
         paddingLeft={'15'}
         paddingRight={'15'}
-        paddingTop={'12'}
-        paddingBottom={'12'}
-        highlightBorderRadius="8"
+        paddingTop={'0'}
+        paddingBottom={'0'}
+        highlightBorderRadius="18"
         text="Hello World"
         autoFocus={true}
         style={styles.highlightText}
