@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.text.Editable
@@ -58,6 +59,8 @@ class HighlightTextView : AppCompatEditText {
     style = Paint.Style.FILL
   }
   private val backgroundRect = RectF()
+  private val backgroundPath = Path()
+  private val radii = FloatArray(8)
 
   var onTextChangeListener: ((String) -> Unit)? = null
 
@@ -149,6 +152,37 @@ class HighlightTextView : AppCompatEditText {
       val lineStart = layout.getLineStart(line)
       val lineEnd = layout.getLineEnd(line)
 
+      // Determine adjacency for selective rounding
+      val hasLeftNeighbor = if (i > 0) {
+        val prevCh = text[i - 1]
+        val sameLine = layout.getLineForOffset(i - 1) == line
+        sameLine && prevCh != '\n' && prevCh != '\t'
+      } else false
+
+      val hasRightNeighbor = if (i < length - 1) {
+        val nextCh = text[i + 1]
+        val sameLine = layout.getLineForOffset(i + 1) == line
+        
+        if (!sameLine || nextCh == '\n' || nextCh == '\t') {
+          false
+        } else if (nextCh == ' ') {
+          // Lookahead: If next is space, check if any visible char follows on same line
+          var hasVisibleAfter = false
+          for (k in i + 2 until length) {
+            if (layout.getLineForOffset(k) != line) break
+            val c = text[k]
+            if (c == '\n' || c == '\t') break
+            if (c != ' ') {
+              hasVisibleAfter = true
+              break
+            }
+          }
+          hasVisibleAfter
+        } else {
+          true
+        }
+      } else false
+
       // Horizontal bounds based on layout positions
       val xStart = layout.getPrimaryHorizontal(i)
       val isLastCharInLine = i == lineEnd - 1
@@ -183,8 +217,73 @@ class HighlightTextView : AppCompatEditText {
       if (right <= left || bottom <= top) continue
 
       backgroundRect.set(left, top, right, bottom)
-      canvas.drawRoundRect(backgroundRect, radius, radius, backgroundPaint)
+      
+      // Detect paragraph boundaries (empty lines above/below)
+      val isFirstLineOfParagraph = line == 0 || isLineEmpty(text, layout, line - 1)
+      val isLastLineOfParagraph = line == layout.lineCount - 1 || isLineEmpty(text, layout, line + 1)
+      
+      var tl = 0f
+      var tr = 0f
+      var br = 0f
+      var bl = 0f
+
+      // Left Edge Logic
+      if (!hasLeftNeighbor) {
+        // Top-Left: Round if first line of paragraph
+        tl = if (isFirstLineOfParagraph) radius else 0f
+        // Bottom-Left: Round if last line of paragraph
+        bl = if (isLastLineOfParagraph) radius else 0f
+      }
+
+      // Right Edge Logic
+      if (!hasRightNeighbor) {
+        val currentLineWidth = layout.getLineMax(line)
+
+        // Top-Right
+        if (isFirstLineOfParagraph) {
+          tr = radius
+        } else {
+          val prevLineWidth = layout.getLineMax(line - 1)
+          // Round Top-Right if we stick out further than the line above
+          tr = if (currentLineWidth > prevLineWidth) radius else 0f
+        }
+
+        // Bottom-Right
+        if (isLastLineOfParagraph) {
+          br = radius
+        } else {
+          val nextLineWidth = layout.getLineMax(line + 1)
+          // Round Bottom-Right if we overhang the line below
+          br = if (currentLineWidth > nextLineWidth) radius else 0f
+        }
+      }
+
+      // Arrays: Top-Left x,y; Top-Right x,y; Bottom-Right x,y; Bottom-Left x,y
+      radii[0] = tl; radii[1] = tl
+      radii[2] = tr; radii[3] = tr
+      radii[4] = br; radii[5] = br
+      radii[6] = bl; radii[7] = bl
+
+      backgroundPath.reset()
+      backgroundPath.addRoundRect(backgroundRect, radii, Path.Direction.CW)
+      canvas.drawPath(backgroundPath, backgroundPaint)
     }
+  }
+
+  private fun isLineEmpty(text: CharSequence, layout: android.text.Layout, line: Int): Boolean {
+    if (line < 0 || line >= layout.lineCount) return false
+    
+    val lineStart = layout.getLineStart(line)
+    val lineEnd = layout.getLineEnd(line)
+    
+    // Check if line contains only whitespace/newlines
+    for (i in lineStart until lineEnd) {
+      val ch = text[i]
+      if (ch != '\n' && ch != '\t' && ch != ' ') {
+        return false
+      }
+    }
+    return true
   }
 
   // --- Public API used from the ViewManager ------------------------------------
