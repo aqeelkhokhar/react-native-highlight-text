@@ -12,8 +12,8 @@ export default function App() {
         fontWeight="bold"
         textAlign="left"
         verticalAlign="center"
-        paddingLeft={'15'}
-        paddingRight={'15'}
+        paddingLeft={'25'}
+        paddingRight={'25'}
         paddingTop={'0'}
         paddingBottom={'0'}
         highlightBorderRadius="18"
