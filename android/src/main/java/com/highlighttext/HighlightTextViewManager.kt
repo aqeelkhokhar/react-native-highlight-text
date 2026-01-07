@@ -183,6 +183,13 @@ class HighlightTextViewManager : SimpleViewManager<HighlightTextView>(),
     }
   }
 
+  @ReactProp(name = "lineSpacing")
+  override fun setLineSpacing(view: HighlightTextView?, value: String?) {
+    value?.toFloatOrNull()?.let { spacing ->
+      view?.setCustomLineSpacing(spacing)
+    }
+  }
+
   @ReactProp(name = "highlightBorderRadius")
   override fun setHighlightBorderRadius(view: HighlightTextView?, value: String?) {
     value?.toFloatOrNull()?.let { radius ->
