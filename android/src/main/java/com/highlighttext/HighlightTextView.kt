@@ -84,7 +84,7 @@ class HighlightTextView : AppCompatEditText {
   private fun init() {
     setBackgroundColor(Color.TRANSPARENT)
     setTextSize(TypedValue.COMPLEX_UNIT_SP, 32f)
-    gravity = Gravity.CENTER
+    gravity = Gravity.START or Gravity.CENTER_VERTICAL
     setPadding(20, 20, 20, 20)
     textColorValue = currentTextColor
 
@@ -242,39 +242,131 @@ class HighlightTextView : AppCompatEditText {
       val isFirstLineOfParagraph = line == 0 || isLineEmpty(text, layout, line - 1)
       val isLastLineOfParagraph = line == layout.lineCount - 1 || isLineEmpty(text, layout, line + 1)
       
+      // Detect text alignment from view's gravity
+      val horizontalGravity = gravity and Gravity.HORIZONTAL_GRAVITY_MASK
+      val isLeftAligned = horizontalGravity == Gravity.START || horizontalGravity == Gravity.LEFT
+      val isRightAligned = horizontalGravity == Gravity.END || horizontalGravity == Gravity.RIGHT
+      val isCenterAligned = horizontalGravity == Gravity.CENTER_HORIZONTAL
+      
       var tl = 0f
       var tr = 0f
       var br = 0f
       var bl = 0f
 
-      // Left Edge Logic
-      if (!hasLeftNeighbor) {
-        // Top-Left: Round if first line of paragraph
-        tl = if (isFirstLineOfParagraph) radius else 0f
-        // Bottom-Left: Round if last line of paragraph
-        bl = if (isLastLineOfParagraph) radius else 0f
-      }
+      when {
+        isLeftAligned -> {
+          // LEFT ALIGNMENT (default behavior)
+          // Left Edge Logic
+          if (!hasLeftNeighbor) {
+            // Top-Left: Round if first line of paragraph
+            tl = if (isFirstLineOfParagraph) radius else 0f
+            // Bottom-Left: Round if last line of paragraph
+            bl = if (isLastLineOfParagraph) radius else 0f
+          }
 
-      // Right Edge Logic
-      if (!hasRightNeighbor) {
-        val currentLineWidth = layout.getLineMax(line)
+          // Right Edge Logic
+          if (!hasRightNeighbor) {
+            val currentLineWidth = layout.getLineMax(line)
 
-        // Top-Right
-        if (isFirstLineOfParagraph) {
-          tr = radius
-        } else {
-          val prevLineWidth = layout.getLineMax(line - 1)
-          // Round Top-Right if we stick out further than the line above
-          tr = if (currentLineWidth > prevLineWidth) radius else 0f
+            // Top-Right
+            if (isFirstLineOfParagraph) {
+              tr = radius
+            } else {
+              val prevLineWidth = layout.getLineMax(line - 1)
+              // Round Top-Right if we stick out further than the line above
+              tr = if (currentLineWidth > prevLineWidth) radius else 0f
+            }
+
+            // Bottom-Right
+            if (isLastLineOfParagraph) {
+              br = radius
+            } else {
+              val nextLineWidth = layout.getLineMax(line + 1)
+              // Round Bottom-Right if we overhang the line below
+              br = if (currentLineWidth > nextLineWidth) radius else 0f
+            }
+          }
         }
+        
+        isRightAligned -> {
+          // RIGHT ALIGNMENT (mirror of left alignment)
+          // Right Edge Logic
+          if (!hasRightNeighbor) {
+            // Top-Right: Round if first line of paragraph
+            tr = if (isFirstLineOfParagraph) radius else 0f
+            // Bottom-Right: Round if last line of paragraph
+            br = if (isLastLineOfParagraph) radius else 0f
+          }
 
-        // Bottom-Right
-        if (isLastLineOfParagraph) {
-          br = radius
-        } else {
-          val nextLineWidth = layout.getLineMax(line + 1)
-          // Round Bottom-Right if we overhang the line below
-          br = if (currentLineWidth > nextLineWidth) radius else 0f
+          // Left Edge Logic
+          if (!hasLeftNeighbor) {
+            val currentLineWidth = layout.getLineMax(line)
+
+            // Top-Left
+            if (isFirstLineOfParagraph) {
+              tl = radius
+            } else {
+              val prevLineWidth = layout.getLineMax(line - 1)
+              // Round Top-Left if we stick out further than the line above
+              tl = if (currentLineWidth > prevLineWidth) radius else 0f
+            }
+
+            // Bottom-Left
+            if (isLastLineOfParagraph) {
+              bl = radius
+            } else {
+              val nextLineWidth = layout.getLineMax(line + 1)
+              // Round Bottom-Left if we overhang the line below
+              bl = if (currentLineWidth > nextLineWidth) radius else 0f
+            }
+          }
+        }
+        
+        isCenterAligned -> {
+          // CENTER ALIGNMENT
+          val currentLineWidth = layout.getLineMax(line)
+          
+          // Left Edge Logic
+          if (!hasLeftNeighbor) {
+            // Top-Left
+            if (isFirstLineOfParagraph) {
+              tl = radius
+            } else {
+              val prevLineWidth = layout.getLineMax(line - 1)
+              // Round Top-Left if we stick out further than the line above
+              tl = if (currentLineWidth > prevLineWidth) radius else 0f
+            }
+
+            // Bottom-Left
+            if (isLastLineOfParagraph) {
+              bl = radius
+            } else {
+              val nextLineWidth = layout.getLineMax(line + 1)
+              // Round Bottom-Left if we overhang the line below
+              bl = if (currentLineWidth > nextLineWidth) radius else 0f
+            }
+          }
+
+          // Right Edge Logic
+          if (!hasRightNeighbor) {
+            // Top-Right
+            if (isFirstLineOfParagraph) {
+              tr = radius
+            } else {
+              val prevLineWidth = layout.getLineMax(line - 1)
+              // Round Top-Right if we stick out further than the line above
+              tr = if (currentLineWidth > prevLineWidth) radius else 0f
+            }
+
+            // Bottom-Right
+            if (isLastLineOfParagraph) {
+              br = radius
+            } else {
+              val nextLineWidth = layout.getLineMax(line + 1)
+              // Round Bottom-Right if we overhang the line below
+              br = if (currentLineWidth > nextLineWidth) radius else 0f
+            }
+          }
         }
       }
 
