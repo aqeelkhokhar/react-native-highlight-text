@@ -43,6 +43,7 @@ class HighlightTextView : AppCompatEditText {
 
   // Line height control
   private var customLineHeight: Float = 0f
+  private var customLineSpacing: Float = 0f
 
   // Font + alignment state
   private var currentFontFamily: String? = null
@@ -213,6 +214,25 @@ class HighlightTextView : AppCompatEditText {
       right += charPaddingRight
       top -= charPaddingTop
       bottom += charPaddingBottom
+
+      if (customLineSpacing < 0f) {
+        val originalLineTop = layout.getLineTop(line).toFloat()
+        val originalLineBottom = layout.getLineBottom(line).toFloat()
+        
+        if (line > 0 && top < originalLineTop) {
+          val prevLineBottom = layout.getLineBottom(line - 1).toFloat()
+          if (top < prevLineBottom) {
+            top = prevLineBottom
+          }
+        }
+        
+        if (line < layout.lineCount - 1 && bottom > originalLineBottom) {
+          val nextLineTop = layout.getLineTop(line + 1).toFloat()
+          if (bottom > nextLineTop) {
+            bottom = nextLineTop
+          }
+        }
+      }
 
       if (right <= left || bottom <= top) continue
 
@@ -471,6 +491,13 @@ class HighlightTextView : AppCompatEditText {
     post { invalidate() }
   }
 
+  fun setCustomLineSpacing(spacing: Float) {
+    customLineSpacing = spacing
+    applyLineHeightAndSpacing()
+    requestLayout()
+    post { invalidate() }
+  }
+
   fun setLetterSpacingProp(points: Float) {
     letterSpacingPoints = points
     applyLetterSpacing()
@@ -515,15 +542,24 @@ class HighlightTextView : AppCompatEditText {
   // --- Layout helpers ----------------------------------------------------------
 
   private fun applyLineHeightAndSpacing() {
+    val metrics = resources.displayMetrics
+    
     if (customLineHeight > 0f) {
       // customLineHeight comes from JS as "points"; convert to px using scaledDensity
-      val metrics = resources.displayMetrics
       val desiredLineHeightPx = customLineHeight * metrics.scaledDensity
       val textHeightPx = textSize
       if (textHeightPx > 0f) {
         val multiplier = desiredLineHeightPx / textHeightPx
-        setLineSpacing(0f, multiplier)
+        val extraSpacing = if (customLineSpacing != 0f) {
+          customLineSpacing * metrics.scaledDensity
+        } else {
+          0f
+        }
+        setLineSpacing(extraSpacing, multiplier)
       }
+    } else if (customLineSpacing != 0f) {
+      val extraSpacing = customLineSpacing * metrics.scaledDensity
+      setLineSpacing(extraSpacing, 1.0f)
     } else {
       // Default: add extra spacing equal to vertical padding so backgrounds don't collide
       val extraSpacing = charPaddingTop + charPaddingBottom

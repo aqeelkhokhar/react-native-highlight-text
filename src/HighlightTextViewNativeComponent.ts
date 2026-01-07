@@ -50,6 +50,7 @@ export interface HighlightTextViewProps extends ViewProps {
   /** Additional space between characters, in layout points (matches React Native's letterSpacing). */
   letterSpacing?: string;
   lineHeight?: string;
+  lineSpacing?: string;
   highlightBorderRadius?: string;
   padding?: string;
   paddingLeft?: string;
