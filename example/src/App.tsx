@@ -10,7 +10,7 @@ export default function App() {
         fontFamily="satoshi"
         fontSize="52"
         fontWeight="bold"
-        textAlign="center"
+        textAlign="left"
         verticalAlign="center"
         paddingLeft={'25'}
         paddingRight={'25'}

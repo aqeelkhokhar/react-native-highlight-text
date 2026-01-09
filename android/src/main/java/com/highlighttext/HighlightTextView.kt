@@ -201,14 +201,15 @@ class HighlightTextView : AppCompatEditText {
         xStart + paint.measureText(text, i, i + 1)
       }
 
-      // Vertical bounds based on line box (includes line spacing)
-      val lineTop = layout.getLineTop(line).toFloat()
-      val lineBottom = layout.getLineBottom(line).toFloat()
+      // Vertical bounds based on font metrics around the baseline, so
+      // they are independent from Android's line spacing mechanics.
+      val baseline = layout.getLineBaseline(line).toFloat()
+      val fm = paint.fontMetrics
 
       var left = xStart
       var right = xEnd
-      var top = lineTop
-      var bottom = lineBottom
+      var top = baseline + fm.ascent
+      var bottom = baseline + fm.descent
 
       // For right-aligned text, ensure the outermost character on each line
       // snaps to the line's visual right edge so the highlight's right side
@@ -228,25 +229,6 @@ class HighlightTextView : AppCompatEditText {
       right += charPaddingRight
       top -= charPaddingTop
       bottom += charPaddingBottom
-
-      if (customLineSpacing < 0f) {
-        val originalLineTop = layout.getLineTop(line).toFloat()
-        val originalLineBottom = layout.getLineBottom(line).toFloat()
-        
-        if (line > 0 && top < originalLineTop) {
-          val prevLineBottom = layout.getLineBottom(line - 1).toFloat()
-          if (top < prevLineBottom) {
-            top = prevLineBottom
-          }
-        }
-        
-        if (line < layout.lineCount - 1 && bottom > originalLineBottom) {
-          val nextLineTop = layout.getLineTop(line + 1).toFloat()
-          if (bottom > nextLineTop) {
-            bottom = nextLineTop
-          }
-        }
-      }
 
       if (right <= left || bottom <= top) continue
 
