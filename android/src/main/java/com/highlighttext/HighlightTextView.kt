@@ -141,6 +141,12 @@ class HighlightTextView : AppCompatEditText {
     val paint = paint
     val radius = if (highlightBorderRadius > 0f) highlightBorderRadius else cornerRadius
 
+    // Precompute horizontal alignment flags once per draw pass
+    val horizontalGravity = gravity and Gravity.HORIZONTAL_GRAVITY_MASK
+    val isLeftAlignedView = horizontalGravity == Gravity.START || horizontalGravity == Gravity.LEFT
+    val isRightAlignedView = horizontalGravity == Gravity.END || horizontalGravity == Gravity.RIGHT
+    val isCenterAlignedView = horizontalGravity == Gravity.CENTER_HORIZONTAL
+
     val length = text.length
     if (length == 0) return
 
@@ -203,6 +209,13 @@ class HighlightTextView : AppCompatEditText {
       var top = lineTop
       var bottom = lineBottom
 
+      // For right-aligned text, ensure the outermost character on each line
+      // snaps to the line's visual right edge so the highlight's right side
+      // forms a clean vertical column across wrapped lines.
+      if (isRightAlignedView && !hasRightNeighbor) {
+        right = layout.getLineRight(line)
+      }
+
       // First shrink by background insets (from the line box)
       top += backgroundInsetTop
       bottom -= backgroundInsetBottom
@@ -242,11 +255,10 @@ class HighlightTextView : AppCompatEditText {
       val isFirstLineOfParagraph = line == 0 || isLineEmpty(text, layout, line - 1)
       val isLastLineOfParagraph = line == layout.lineCount - 1 || isLineEmpty(text, layout, line + 1)
       
-      // Detect text alignment from view's gravity
-      val horizontalGravity = gravity and Gravity.HORIZONTAL_GRAVITY_MASK
-      val isLeftAligned = horizontalGravity == Gravity.START || horizontalGravity == Gravity.LEFT
-      val isRightAligned = horizontalGravity == Gravity.END || horizontalGravity == Gravity.RIGHT
-      val isCenterAligned = horizontalGravity == Gravity.CENTER_HORIZONTAL
+      // Use precomputed text alignment flags
+      val isLeftAligned = isLeftAlignedView
+      val isRightAligned = isRightAlignedView
+      val isCenterAligned = isCenterAlignedView
       
       var tl = 0f
       var tr = 0f
