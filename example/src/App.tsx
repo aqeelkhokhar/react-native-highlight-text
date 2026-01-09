@@ -18,7 +18,7 @@ export default function App() {
         paddingBottom={'0'}
         lineSpacing="0"
         highlightBorderRadius="18"
-        text="Hello World"
+        text="Hello World "
         autoFocus={true}
         style={styles.highlightText}
         lineHeight="47"
