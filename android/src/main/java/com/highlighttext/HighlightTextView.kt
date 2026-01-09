@@ -14,6 +14,7 @@ import android.util.TypedValue
 import android.view.Gravity
 import androidx.appcompat.widget.AppCompatEditText
 import com.facebook.react.common.assets.ReactFontManager
+import kotlin.math.abs
 
 /**
  * Custom EditText that mimics the iOS implementation by drawing per-character
@@ -285,8 +286,10 @@ class HighlightTextView : AppCompatEditText {
               tr = radius
             } else {
               val prevLineWidth = layout.getLineMax(line - 1)
-              // Round Top-Right if we stick out further than the line above
-              tr = if (currentLineWidth > prevLineWidth) radius else 0f
+              // Round Top-Right only if this line extends further than the line above
+              tr = if (!lineWidthsEqual(currentLineWidth, prevLineWidth) &&
+                currentLineWidth > prevLineWidth
+              ) radius else 0f
             }
 
             // Bottom-Right
@@ -294,8 +297,10 @@ class HighlightTextView : AppCompatEditText {
               br = radius
             } else {
               val nextLineWidth = layout.getLineMax(line + 1)
-              // Round Bottom-Right if we overhang the line below
-              br = if (currentLineWidth > nextLineWidth) radius else 0f
+              // Round Bottom-Right only if this line extends further than the line below
+              br = if (!lineWidthsEqual(currentLineWidth, nextLineWidth) &&
+                currentLineWidth > nextLineWidth
+              ) radius else 0f
             }
           }
         }
@@ -319,8 +324,10 @@ class HighlightTextView : AppCompatEditText {
               tl = radius
             } else {
               val prevLineWidth = layout.getLineMax(line - 1)
-              // Round Top-Left if we stick out further than the line above
-              tl = if (currentLineWidth > prevLineWidth) radius else 0f
+              // Round Top-Left only if this line extends further than the line above
+              tl = if (!lineWidthsEqual(currentLineWidth, prevLineWidth) &&
+                currentLineWidth > prevLineWidth
+              ) radius else 0f
             }
 
             // Bottom-Left
@@ -328,8 +335,10 @@ class HighlightTextView : AppCompatEditText {
               bl = radius
             } else {
               val nextLineWidth = layout.getLineMax(line + 1)
-              // Round Bottom-Left if we overhang the line below
-              bl = if (currentLineWidth > nextLineWidth) radius else 0f
+              // Round Bottom-Left only if this line extends further than the line below
+              bl = if (!lineWidthsEqual(currentLineWidth, nextLineWidth) &&
+                currentLineWidth > nextLineWidth
+              ) radius else 0f
             }
           }
         }
@@ -345,8 +354,10 @@ class HighlightTextView : AppCompatEditText {
               tl = radius
             } else {
               val prevLineWidth = layout.getLineMax(line - 1)
-              // Round Top-Left if we stick out further than the line above
-              tl = if (currentLineWidth > prevLineWidth) radius else 0f
+              // Round Top-Left only if this line extends further than the line above
+              tl = if (!lineWidthsEqual(currentLineWidth, prevLineWidth) &&
+                currentLineWidth > prevLineWidth
+              ) radius else 0f
             }
 
             // Bottom-Left
@@ -354,8 +365,10 @@ class HighlightTextView : AppCompatEditText {
               bl = radius
             } else {
               val nextLineWidth = layout.getLineMax(line + 1)
-              // Round Bottom-Left if we overhang the line below
-              bl = if (currentLineWidth > nextLineWidth) radius else 0f
+              // Round Bottom-Left only if this line extends further than the line below
+              bl = if (!lineWidthsEqual(currentLineWidth, nextLineWidth) &&
+                currentLineWidth > nextLineWidth
+              ) radius else 0f
             }
           }
 
@@ -366,8 +379,10 @@ class HighlightTextView : AppCompatEditText {
               tr = radius
             } else {
               val prevLineWidth = layout.getLineMax(line - 1)
-              // Round Top-Right if we stick out further than the line above
-              tr = if (currentLineWidth > prevLineWidth) radius else 0f
+              // Round Top-Right only if this line extends further than the line above
+              tr = if (!lineWidthsEqual(currentLineWidth, prevLineWidth) &&
+                currentLineWidth > prevLineWidth
+              ) radius else 0f
             }
 
             // Bottom-Right
@@ -375,8 +390,10 @@ class HighlightTextView : AppCompatEditText {
               br = radius
             } else {
               val nextLineWidth = layout.getLineMax(line + 1)
-              // Round Bottom-Right if we overhang the line below
-              br = if (currentLineWidth > nextLineWidth) radius else 0f
+              // Round Bottom-Right only if this line extends further than the line below
+              br = if (!lineWidthsEqual(currentLineWidth, nextLineWidth) &&
+                currentLineWidth > nextLineWidth
+              ) radius else 0f
             }
           }
         }
@@ -392,6 +409,11 @@ class HighlightTextView : AppCompatEditText {
       backgroundPath.addRoundRect(backgroundRect, radii, Path.Direction.CW)
       canvas.drawPath(backgroundPath, backgroundPaint)
     }
+  }
+
+  private fun lineWidthsEqual(w1: Float, w2: Float): Boolean {
+    // Small tolerance so lines that should visually match are treated as equal
+    return abs(w1 - w2) < 0.5f
   }
 
   private fun isLineEmpty(text: CharSequence, layout: android.text.Layout, line: Int): Boolean {
