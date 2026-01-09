@@ -10,7 +10,7 @@ export default function App() {
         fontFamily="satoshi"
         fontSize="52"
         fontWeight="bold"
-        textAlign=""
+        textAlign="center"
         verticalAlign="center"
         paddingLeft={'25'}
         paddingRight={'25'}
@@ -18,7 +18,7 @@ export default function App() {
         paddingBottom={'0'}
         lineSpacing="0"
         highlightBorderRadius="18"
-        text="Hello World dk dfksalfj kdsjakl dfsjakfljasd kdsajfkldsa kdfsjaklfj lkdsajfljsad dfsakjfklas kdhfasklj khdfsajkj kdshfjakdj"
+        text="Hello World "
         autoFocus={true}
         style={styles.highlightText}
         lineHeight="47"
