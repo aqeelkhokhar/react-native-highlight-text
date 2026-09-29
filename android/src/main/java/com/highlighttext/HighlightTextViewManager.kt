@@ -4,15 +4,12 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.text.InputType
 import android.view.Gravity
-import com.facebook.react.bridge.Arguments
-import com.facebook.react.bridge.ReactContext
-import com.facebook.react.bridge.WritableMap
 import com.facebook.react.module.annotations.ReactModule
 import com.facebook.react.uimanager.SimpleViewManager
 import com.facebook.react.uimanager.ThemedReactContext
+import com.facebook.react.uimanager.UIManagerHelper
 import com.facebook.react.uimanager.ViewManagerDelegate
 import com.facebook.react.uimanager.annotations.ReactProp
-import com.facebook.react.uimanager.events.RCTEventEmitter
 import com.facebook.react.viewmanagers.HighlightTextViewManagerInterface
 import com.facebook.react.viewmanagers.HighlightTextViewManagerDelegate
 
@@ -36,13 +33,11 @@ class HighlightTextViewManager : SimpleViewManager<HighlightTextView>(),
   public override fun createViewInstance(context: ThemedReactContext): HighlightTextView {
     val view = HighlightTextView(context)
     view.onTextChangeListener = { text ->
-      val event: WritableMap = Arguments.createMap()
-      event.putString("text", text)
-      
-      val reactContext = context as ReactContext
-      reactContext
-        .getJSModule(RCTEventEmitter::class.java)
-        .receiveEvent(view.id, "onChange", event)
+      val surfaceId = UIManagerHelper.getSurfaceId(context)
+      // Deprecated in newer RN in favour of getEventDispatcher(context), which doesn't exist
+      // on older versions; keep this form so the library works across RN >= 0.76
+      UIManagerHelper.getEventDispatcherForReactTag(context, view.id)
+        ?.dispatchEvent(OnChangeEvent(surfaceId, view.id, text))
     }
     return view
   }

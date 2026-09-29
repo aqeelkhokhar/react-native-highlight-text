@@ -1,12 +1,36 @@
-# react-native-highlight-text
+# react-native-highlight-text-view
 
-A native text input for React Native that supports inline text highlighting
+Instagram/TikTok-style highlighted text input for React Native: rounded per-character backgrounds, editable, and built natively for iOS and Android on the New Architecture (Fabric).
 
 ## Installation
 
 ```sh
 npm install react-native-highlight-text-view
+# or
+yarn add react-native-highlight-text-view
 ```
+
+**React Native CLI (iOS):** run `cd ios && pod install` after installing.
+
+**Expo:**
+
+```sh
+npx expo install react-native-highlight-text-view
+npx expo prebuild   # or build with EAS
+```
+
+This package contains native code, so it works in Expo **development builds** and EAS builds but **not in Expo Go**. No config plugin is needed.
+
+## Compatibility
+
+| Environment                             | Supported                  |
+| --------------------------------------- | -------------------------- |
+| React Native ≥ 0.76 (New Architecture)  | ✅                         |
+| React Native with Old Architecture      | ❌ (Fabric-only component) |
+| Expo SDK ≥ 52 (development build / EAS) | ✅                         |
+| Expo Go                                 | ❌                         |
+| iOS                                     | ✅                         |
+| Android (minSdk 24)                     | ✅                         |
 
 ## Usage
 
@@ -142,7 +166,7 @@ const [fontFamily, setFontFamily] = useState('system');
 
 return (
   <HighlightTextView
-    key={fontFamily} 
+    key={fontFamily}
     fontFamily={fontFamily}
     fontSize="32"
     color="#00A4A3"
@@ -151,7 +175,7 @@ return (
     paddingRight="8"
     paddingTop="4"
     paddingBottom="4"
-    backgroundInsetTop="6" 
+    backgroundInsetTop="6"
     backgroundInsetBottom="6"
     highlightBorderRadius="8"
     text="Beautiful Eczar Font"

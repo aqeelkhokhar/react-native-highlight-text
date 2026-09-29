@@ -1,6 +1,9 @@
-import { codegenNativeComponent } from 'react-native';
-import type { ViewProps } from 'react-native';
-import type { BubblingEventHandler } from 'react-native/Libraries/Types/CodegenTypes';
+import {
+  codegenNativeComponent,
+  type CodegenTypes,
+  type HostComponent,
+  type ViewProps,
+} from 'react-native';
 
 export interface OnChangeEventData {
   readonly text: string;
@@ -68,9 +71,9 @@ export interface HighlightTextViewProps extends ViewProps {
   text?: string;
   isEditable?: boolean;
   autoFocus?: boolean;
-  onChange?: BubblingEventHandler<OnChangeEventData>;
+  onChange?: CodegenTypes.BubblingEventHandler<OnChangeEventData>;
 }
 
 export default codegenNativeComponent<HighlightTextViewProps>(
   'HighlightTextView'
-);
+) as HostComponent<HighlightTextViewProps>;

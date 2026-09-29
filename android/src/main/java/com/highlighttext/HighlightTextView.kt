@@ -642,7 +642,7 @@ class HighlightTextView : AppCompatEditText {
         // Move cursor to end of text
         text?.length?.let { setSelection(it) }
         val imm = context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
-        imm?.showSoftInput(this, android.view.inputmethod.InputMethodManager.SHOW_FORCED)
+        imm?.showSoftInput(this, 0)
       }, 100)
     }
   }

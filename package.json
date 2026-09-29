@@ -1,7 +1,7 @@
 {
   "name": "react-native-highlight-text-view",
   "version": "0.1.33",
-  "description": "A native text input for React Native that supports inline text highlighting",
+  "description": "Instagram/TikTok-style highlighted text input for React Native — rounded per-character backgrounds, editable, New Architecture (Fabric) and Expo dev build ready",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
   "exports": {
@@ -38,16 +38,33 @@
     "lint": "eslint \"**/*.{js,ts,tsx}\"",
     "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib",
     "prepare": "bob build",
-    "release": "release-it --only-version"
+    "release": "release-it --only-version",
+    "example-expo": "yarn workspace react-native-highlight-text-expo-example"
   },
   "keywords": [
     "react-native",
     "ios",
-    "android"
+    "android",
+    "highlight",
+    "text-highlight",
+    "highlight-text",
+    "text-background",
+    "rounded-background",
+    "background-color",
+    "text-input",
+    "textinput",
+    "instagram",
+    "instagram-stories",
+    "story-editor",
+    "tiktok",
+    "marker",
+    "fabric",
+    "new-architecture",
+    "expo"
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/aqeelkhokhar/react-native-highlight-text.git.git"
+    "url": "git+https://github.com/aqeelkhokhar/react-native-highlight-text.git"
   },
   "author": "Aqeel Ahmad Khokhar <aqeelahmadkhokhar99@gmail.com> (https://portfolio-aqeel-ahmads-projects-6ef4879c.vercel.app/)",
   "contributors": [
@@ -55,9 +72,9 @@
   ],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/aqeelkhokhar/react-native-highlight-text.git/issues"
+    "url": "https://github.com/aqeelkhokhar/react-native-highlight-text/issues"
   },
-  "homepage": "https://github.com/aqeelkhokhar/react-native-highlight-text.git#readme",
+  "homepage": "https://github.com/aqeelkhokhar/react-native-highlight-text#readme",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
@@ -67,36 +84,38 @@
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.35.0",
     "@evilmartians/lefthook": "^1.12.3",
-    "@react-native-community/cli": "20.0.1",
-    "@react-native/babel-preset": "0.81.1",
-    "@react-native/eslint-config": "^0.81.1",
+    "@react-native-community/cli": "20.2.0",
+    "@react-native/babel-preset": "0.87.1",
+    "@react-native/eslint-config": "0.87.1",
+    "@react-native/jest-preset": "0.87.1",
     "@release-it/conventional-changelog": "^10.0.1",
     "@types/jest": "^29.5.14",
-    "@types/react": "^19.1.0",
+    "@types/react": "^19.2.0",
     "commitlint": "^19.8.1",
-    "del-cli": "^6.0.0",
+    "del-cli": "^7.0.0",
     "eslint": "^9.35.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.4",
     "jest": "^29.7.0",
     "prettier": "^3.6.2",
-    "react": "19.1.0",
-    "react-native": "0.81.1",
-    "react-native-builder-bob": "^0.40.13",
+    "react": "19.2.3",
+    "react-native": "0.87.1",
+    "react-native-builder-bob": "^0.43.1",
     "release-it": "^19.0.4",
     "turbo": "^2.5.6",
     "typescript": "^5.9.2"
   },
   "peerDependencies": {
-    "react": "*",
-    "react-native": "*"
+    "react": ">=18.0.0",
+    "react-native": ">=0.76.0"
   },
   "workspaces": [
-    "example"
+    "example",
+    "example-expo"
   ],
   "packageManager": "yarn@3.6.1",
   "jest": {
-    "preset": "react-native",
+    "preset": "@react-native/jest-preset",
     "modulePathIgnorePatterns": [
       "<rootDir>/example/node_modules",
       "<rootDir>/lib/"
@@ -159,8 +178,10 @@
       "javaPackageName": "com.highlighttext"
     },
     "ios": {
-      "componentProvider": {
-        "HighlightTextView": "HighlightTextView"
+      "components": {
+        "HighlightTextView": {
+          "className": "HighlightTextView"
+        }
       }
     }
   },
