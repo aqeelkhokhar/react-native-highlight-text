@@ -65,7 +65,7 @@ Notes found during verification:
 
 ### Phase 1 regression check: old (`main`, RN 0.81.1) vs new (this branch, RN 0.87.1)
 
-Same test app (8 scenarios covering every prop: alignment, vertical alignment, fonts/weight/letter spacing, line height, padding, insets, radius, editable controlled input, read-only, autoFocus) built in Release for both versions, driven by the same 56-step Maestro flow, screenshots pixel-diffed.
+Harness saved in [`e2e/`](e2e/README.md). Same test app (8 scenarios covering every prop: alignment, vertical alignment, fonts/weight/letter spacing, line height, padding, insets, radius, editable controlled input, read-only, autoFocus) built in Release for both versions, driven by the same 56-step Maestro flow, screenshots pixel-diffed.
 
 |                                         | Flow (56 steps: typing, delete, programmatic set, clear, read-only, autoFocus) | Screenshots vs old                                                                                               |
 | --------------------------------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |

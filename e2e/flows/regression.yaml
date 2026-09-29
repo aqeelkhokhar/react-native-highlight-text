@@ -1,0 +1,78 @@
+appId: highlighttext.example
+---
+- launchApp:
+    clearState: true
+    stopApp: true
+- extendedWaitUntil:
+    visible: "S1: align"
+    timeout: 60000
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}/s1_align
+- tapOn: "Next"
+- assertVisible: "S2: align2"
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}/s2_align2
+- tapOn: "Next"
+- assertVisible: "S3: vertical"
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}/s3_vertical
+- tapOn: "Next"
+- assertVisible: "S4: styles"
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}/s4_styles
+- tapOn: "Next"
+- assertVisible: "S5: spacing"
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}/s5_spacing
+# --- S6 editable: typing, deleting, programmatic set, clear
+- tapOn: "Next"
+- assertVisible: "S6: editable"
+- assertVisible: "len=7 text=.Edit me."
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}/s6_editable_initial
+- tapOn:
+    id: "input"
+- inputText: " ok"
+- extendedWaitUntil:
+    visible: "len=10 text=.Edit me ok."
+    timeout: 5000
+- eraseText: 3
+- extendedWaitUntil:
+    visible: "len=7 text=.Edit me."
+    timeout: 5000
+- tapOn: "Set text"
+- extendedWaitUntil:
+    visible: "len=12 text=.Programmatic."
+    timeout: 5000
+- inputText: "X"
+- extendedWaitUntil:
+    visible: "len=13 text=.ProgrammaticX."
+    timeout: 5000
+- tapOn: "Clear"
+- extendedWaitUntil:
+    visible: "len=0 text=.."
+    timeout: 5000
+- inputText: "New"
+- extendedWaitUntil:
+    visible: "len=3 text=.New."
+    timeout: 5000
+- tapOn: "Set text"
+- assertVisible: "len=12 text=.Programmatic."
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}/s6_editable_after
+# --- S7 read-only: typing must not change the text
+- tapOn: "Next"
+- assertVisible: "S7: readonly"
+- tapOn:
+    id: "input"
+- inputText: "zz"
+- assertVisible: "len=7 text=.Edit me."
+- tapOn: "Set text"
+- assertVisible: "len=12 text=.Programmatic."
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}/s7_readonly
+# --- S8 autoFocus: keyboard should open by itself, typing works without tapping
+- tapOn: "Next"
+- assertVisible: "S8: autofocus"
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}/s8_autofocus
