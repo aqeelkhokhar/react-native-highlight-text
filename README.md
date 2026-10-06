@@ -5,7 +5,7 @@ A native text input for React Native that supports inline text highlighting
 ## Installation
 
 ```sh
-npm install react-native-highlight-text
+npm install react-native-highlight-text-view
 ```
 
 ## Usage
