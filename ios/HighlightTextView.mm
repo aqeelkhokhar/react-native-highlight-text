@@ -107,6 +107,15 @@ using namespace facebook::react;
     NSTextAlignment _currentHorizontalAlignment;
 }
 
++ (BOOL)shouldBeRecycled
+{
+    // updateProps only applies props that differ from the previous props, and the
+    // native state (padding, insets, radius, fonts, alignment...) lives in ivars.
+    // A recycled view would carry that state over to the next view, so always
+    // start from a freshly initialised view instead.
+    return NO;
+}
+
 + (ComponentDescriptorProvider)componentDescriptorProvider
 {
     return concreteComponentDescriptorProvider<HighlightTextViewComponentDescriptor>();
@@ -136,7 +145,7 @@ using namespace facebook::react;
     _fontFamily = nil;
     _fontWeight = @"normal";
     _currentVerticalAlignment = nil;
-    _currentHorizontalAlignment = NSTextAlignmentCenter;
+    _currentHorizontalAlignment = NSTextAlignmentLeft; // README default: left
     
     // Create text storage, layout manager, and text container
     NSTextStorage *textStorage = [[NSTextStorage alloc] init];
@@ -162,10 +171,10 @@ using namespace facebook::react;
     _textView = [[UITextView alloc] initWithFrame:CGRectZero textContainer:textContainer];
     _textView.delegate = self;
     _textView.font = [UIFont systemFontOfSize:32];
-    _textView.textAlignment = NSTextAlignmentCenter;
+    _textView.textAlignment = NSTextAlignmentLeft;
     _textView.textContainerInset = UIEdgeInsetsMake(10, 10, 10, 10);
     _textView.backgroundColor = [UIColor clearColor];
-    _textView.editable = YES;
+    _textView.editable = YES; // matches the codegen default (WithDefault<boolean, true>)
     _textView.scrollEnabled = YES;
     _textView.userInteractionEnabled = YES;
 

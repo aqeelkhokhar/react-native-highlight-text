@@ -18,11 +18,11 @@ export interface OnChangeEventData {
  * - 'right' or 'flex-end': Align text to the right
  * - 'justify': Justify text (distribute evenly)
  *
- * Vertical alignment (iOS only):
+ * Vertical alignment:
  * - 'top': Align to top
  * - 'bottom': Align to bottom
  *
- * Combined alignment (iOS only):
+ * Combined alignment:
  * - 'top-left', 'top-center', 'top-right'
  * - 'bottom-left', 'bottom-center', 'bottom-right'
  */
@@ -69,7 +69,8 @@ export interface HighlightTextViewProps extends ViewProps {
   /** Reduces background width from the right (shrinks inward from glyph bounds) */
   backgroundInsetRight?: string;
   text?: string;
-  isEditable?: boolean;
+  /** Defaults to true (native default), so omitting it keeps the view editable. */
+  isEditable?: CodegenTypes.WithDefault<boolean, true>;
   autoFocus?: boolean;
   onChange?: CodegenTypes.BubblingEventHandler<OnChangeEventData>;
 }
