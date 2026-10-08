@@ -69,7 +69,7 @@ export default function App() {
 | `color`                 | `string`                                             | `#FFFF00` | Background highlight color (hex format)                                                                                                                                                                                      |
 | `textColor`             | `string`                                             | -         | Text color (hex format)                                                                                                                                                                                                      |
 | `textAlign`             | `string`                                             | `left`    | Text alignment. Supports: `'left'`, `'center'`, `'right'`, `'justify'`, `'flex-start'`, `'flex-end'`, `'top'`, `'bottom'`, `'top-left'`, `'top-center'`, `'top-right'`, `'bottom-left'`, `'bottom-center'`, `'bottom-right'` |
-| `verticalAlign`         | `'top' \| 'center' \| 'middle' \| 'bottom'`          | -         | Vertical alignment (iOS only). Alternative to using combined `textAlign` values. **Note:** Android does not support vertical alignment and will use default vertical positioning.                                            |
+| `verticalAlign`         | `'top' \| 'center' \| 'middle' \| 'bottom'`          | -         | Vertical alignment. Alternative to using combined `textAlign` values.                                                                                                                                                        |
 | `fontFamily`            | `string`                                             | -         | Font family name                                                                                                                                                                                                             |
 | `fontSize`              | `string`                                             | `32`      | Font size in points                                                                                                                                                                                                          |
 | `letterSpacing`         | `string`                                             | `0`       | Extra space between characters, in layout points (same semantics as React Native's `letterSpacing`).                                                                                                                         |
@@ -131,8 +131,6 @@ To make backgrounds touch vertically across multiple lines, combine `lineHeight`
 ```
 
 **Tip:** Set `lineHeight` to approximately `fontSize + 4` to `fontSize + 8`, then adjust `backgroundInsetTop` and `backgroundInsetBottom` until backgrounds touch smoothly.
-
-**Note:** Vertical alignment is currently supported on iOS only. On Android, text will use default vertical positioning.
 
 ### Auto-focusing the Input
 

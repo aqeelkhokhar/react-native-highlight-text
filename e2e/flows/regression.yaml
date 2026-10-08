@@ -8,6 +8,15 @@ appId: highlighttext.example
     timeout: 60000
 - waitForAnimationToEnd
 - takeScreenshot: ${OUT}/s1_align
+# Freshly mounted isEditable={false} views (S1 is the first screen, nothing to recycle):
+# typing must not change them. s1_align_typed must be pixel-identical to s1_align.
+- tapOn:
+    text: "The quick brown fox jumps over the lazy dog"
+    index: 0
+- inputText: "zz"
+- assertNotVisible: ".*zz.*"
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}/s1_align_typed
 - tapOn: "Next"
 - assertVisible: "S2: align2"
 - waitForAnimationToEnd

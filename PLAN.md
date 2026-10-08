@@ -88,17 +88,30 @@ Goal: an API that feels like a normal React Native component, plus the TextInput
 - [ ] Props: `placeholder`, `placeholderTextColor`, `maxLength`, `autoCapitalize`, `keyboardType`, `returnKeyType`, `editable` alias for `isEditable`
 - [ ] Ref commands: `focus()`, `blur()`, `clear()`, `setText()` (codegen `codegenNativeCommands`)
 - [ ] Fix the "`key={fontFamily}` required" workaround natively (re-measure on font change)
-- [ ] **iOS state bugs (pre-existing, found in regression check):** `updateProps` only applies props that differ from the previous props, so
+- [x] **iOS state bugs (pre-existing, found in regression check):** (Phase 2a: `+shouldBeRecycled NO`, `isEditable` is `WithDefault<boolean, true>`, iOS default `textAlign` is left) `updateProps` only applies props that differ from the previous props, so
   - Fabric view recycling leaks native state between views (e.g. `highlightBorderRadius`/padding of a previous screen appears on a new view) — fix with `+shouldBeRecycled NO` or a full reset in `prepareForRecycle`
   - `isEditable={false}` is ignored on a freshly mounted view (codegen default `false`, native default `YES`) — only works on recycled views today
   - Default `textAlign` on iOS fresh views is `center`, README says `left`
   - These must be fixed together (fixing recycling alone makes read-only fields editable) and are a visible behavior change → release note
-- [ ] Android vertical alignment parity with iOS (verify — example looked vertically centered on Android already)
-- [ ] Android: remove seams between words in highlight background
-- [ ] Android: replace deprecated `DisplayMetrics.scaledDensity` with `TypedValue.applyDimension(COMPLEX_UNIT_SP, …)`
+- [x] Android vertical alignment parity with iOS (verified: top/center/bottom already work on Android; README "iOS only" note removed)
+- [x] Android: remove seams between words in highlight background (all rects filled as one path)
+- [x] Android: replace deprecated `DisplayMetrics.scaledDensity` with `TypedValue.applyDimension(COMPLEX_UNIT_SP, …)`
 - [ ] iOS perf: cache per-character sizes / use glyph bounding rects instead of `sizeWithAttributes` per draw
 - [ ] Tests: Jest for prop conversion; Maestro flows on example (type → onChange, focus/blur)
-- [ ] Release `1.0.0` with CHANGELOG
+- [ ] Release `1.0.0` with CHANGELOG (started: `CHANGELOG.md`, Unreleased section)
+
+### Phase 2a verification (2026-10-08)
+
+Native correctness fixes only (no new API). Same e2e harness, Release builds of `feat/phase-2` before and after the fixes, iOS 26.1 sim + Android 17 emu. The flow gained a fresh-mount read-only check (type into an `isEditable={false}` view on the first screen, `s1_align_typed` must match `s1_align`); it passes on both platforms (61 steps).
+
+| Screen            | iOS before → after                                                                               | Android before → after                                          |
+| ----------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| S1–S4, S6 initial | identical                                                                                        | identical (S4: anti-aliasing at overlapping round corners only) |
+| S5 spacing        | padding-10 box now drawn with its own props (before: radius/padding leaked from a recycled view) | 8 px of edge anti-aliasing (seam fix)                           |
+| S6 after, S7      | cursor blink only                                                                                | Gboard suggestion strip only                                    |
+| S8 autoFocus      | default padding/radius (before: S7's padding 8 / radius 6 leaked via recycling)                  | Gboard suggestion strip only                                    |
+
+Not fixed here (pre-existing, out of scope): on iOS `verticalAlign="center"` renders at the top (same as omitting it), Android centers it; iOS still draws per-character rounded rects (visible bumps with large padding), Android merges them.
 
 ---
 
