@@ -151,6 +151,11 @@ class HighlightTextView : AppCompatEditText {
     val length = text.length
     if (length == 0) return
 
+    // All character rects go into ONE path that is filled once. Filling each rect
+    // separately anti-aliases every edge on its own, which leaves faint seams where
+    // neighbouring rects meet or overlap; a single fill gives the union clean edges.
+    backgroundPath.reset()
+
     for (i in 0 until length) {
       val ch = text[i]
       // Match iOS: skip spaces and control characters for background
@@ -387,10 +392,10 @@ class HighlightTextView : AppCompatEditText {
       radii[4] = br; radii[5] = br
       radii[6] = bl; radii[7] = bl
 
-      backgroundPath.reset()
       backgroundPath.addRoundRect(backgroundRect, radii, Path.Direction.CW)
-      canvas.drawPath(backgroundPath, backgroundPaint)
     }
+
+    canvas.drawPath(backgroundPath, backgroundPaint)
   }
 
   private fun lineWidthsEqual(w1: Float, w2: Float): Boolean {
@@ -653,20 +658,20 @@ class HighlightTextView : AppCompatEditText {
     val metrics = resources.displayMetrics
     
     if (customLineHeight > 0f) {
-      // customLineHeight comes from JS as "points"; convert to px using scaledDensity
-      val desiredLineHeightPx = customLineHeight * metrics.scaledDensity
+      // customLineHeight comes from JS as "points"; convert to px as sp
+      val desiredLineHeightPx = spToPx(customLineHeight, metrics)
       val textHeightPx = textSize
       if (textHeightPx > 0f) {
         val multiplier = desiredLineHeightPx / textHeightPx
         val extraSpacing = if (customLineSpacing != 0f) {
-          customLineSpacing * metrics.scaledDensity
+          spToPx(customLineSpacing, metrics)
         } else {
           0f
         }
         setLineSpacing(extraSpacing, multiplier)
       }
     } else if (customLineSpacing != 0f) {
-      val extraSpacing = customLineSpacing * metrics.scaledDensity
+      val extraSpacing = spToPx(customLineSpacing, metrics)
       setLineSpacing(extraSpacing, 1.0f)
     } else {
       // Default: add extra spacing equal to vertical padding so backgrounds don't collide
@@ -675,11 +680,14 @@ class HighlightTextView : AppCompatEditText {
     }
   }
 
+  private fun spToPx(value: Float, metrics: android.util.DisplayMetrics): Float =
+    TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, value, metrics)
+
   private fun applyLetterSpacing() {
     // React Native's letterSpacing is specified in layout points. Convert that to
     // Android's "em" units: pxSpacing / textSizePx.
     val metrics = resources.displayMetrics
-    val pxSpacing = letterSpacingPoints * metrics.scaledDensity
+    val pxSpacing = spToPx(letterSpacingPoints, metrics)
     val textPx = textSize
     if (textPx > 0f) {
       super.setLetterSpacing(pxSpacing / textPx)

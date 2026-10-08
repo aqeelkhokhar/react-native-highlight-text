@@ -237,10 +237,8 @@ class HighlightTextViewManager : SimpleViewManager<HighlightTextView>(),
       } else {
         InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
       }
-      // Prevent keyboard from showing when not editable
-      if (!value) {
-        setShowSoftInputOnFocus(false)
-      }
+      // Prevent keyboard from showing when not editable (and restore it when editable again)
+      setShowSoftInputOnFocus(value)
     }
   }
 
