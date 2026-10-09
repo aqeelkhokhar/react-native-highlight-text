@@ -1,6 +1,28 @@
 # react-native-highlight-text-view
 
-Instagram/TikTok-style highlighted text input for React Native: rounded per-character backgrounds, editable, and built natively for iOS and Android on the New Architecture (Fabric).
+**Instagram/TikTok-style highlighted text input for React Native.** Rounded per-character backgrounds that grow line by line as you type, drawn natively on iOS and Android for the New Architecture (Fabric).
+
+[![npm version](https://img.shields.io/npm/v/react-native-highlight-text-view?color=cb3837&logo=npm)](https://www.npmjs.com/package/react-native-highlight-text-view)
+[![npm downloads](https://img.shields.io/npm/dm/react-native-highlight-text-view?color=cb3837)](https://www.npmjs.com/package/react-native-highlight-text-view)
+[![license](https://img.shields.io/npm/l/react-native-highlight-text-view?color=blue)](LICENSE)
+![platforms](https://img.shields.io/badge/platforms-iOS%20%7C%20Android-lightgrey)
+![New Architecture](https://img.shields.io/badge/New%20Architecture-Fabric-6f42c1)
+![Expo dev build](https://img.shields.io/badge/Expo-dev%20build-000020?logo=expo)
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/aqeelkhokhar/react-native-highlight-text/main/docs/assets/hero-ios.gif" width="300" alt="Typing story text on iOS: the rounded highlight grows line by line, then the color and alignment change" />
+  &nbsp;&nbsp;
+  <img src="https://raw.githubusercontent.com/aqeelkhokhar/react-native-highlight-text/main/docs/assets/hero-android.gif" width="300" alt="The same story editor on Android" />
+</p>
+
+## Why
+
+- **Story text, natively.** The highlight hugs every line of text with rounded corners, like Instagram and TikTok stories, and redraws as the user types.
+- **A real input.** Controlled `text`, `placeholder`, `maxLength`, keyboard and return key props, focus/blur/submit/selection events and `focus()`, `blur()`, `clear()`, `setText()` ref methods.
+- **Modern props.** `fontSize={32}` and any React Native color (`"#FF3D7F"`, `"rgb(255, 204, 0)"`, `"hsl(158, 64%, 52%)"`, `"teal"`).
+- **Fine control.** Per-side padding, corner radius, background insets for fonts with tall metrics, line height, letter spacing, horizontal and vertical alignment.
+- **Runtime changes.** Change the font, size, colors or alignment at any time without remounting.
+- **New Architecture first.** A Fabric component for React Native 0.76+, Expo development builds and EAS. Fully typed.
 
 ## Installation
 
@@ -32,9 +54,9 @@ This package contains native code, so it works in Expo **development builds** an
 | iOS                                     | ✅                         |
 | Android (minSdk 24)                     | ✅                         |
 
-Upgrading from 0.1.x? Read the [1.0.0 upgrade notes](CHANGELOG.md#upgrade-notes): a few defaults changed (for example the iOS default `textAlign` is now `left`).
+Verified on React Native 0.87.1 (CLI) and Expo SDK 57 (React Native 0.86.3).
 
-## Usage
+## Quick start
 
 ```tsx
 import { useRef, useState } from 'react';
@@ -43,34 +65,134 @@ import {
   type HighlightTextViewRef,
 } from 'react-native-highlight-text-view';
 
-export default function App() {
-  const [text, setText] = useState('Hello World');
+export default function StoryText() {
+  const [text, setText] = useState('');
   const ref = useRef<HighlightTextViewRef>(null);
 
   return (
     <HighlightTextView
       ref={ref}
-      color="#00A4A3"
-      textColor="black"
-      textAlign="flex-start"
-      fontSize={32}
-      paddingLeft={8}
-      paddingRight={8}
-      paddingTop={4}
-      paddingBottom={4}
-      highlightBorderRadius={6}
-      placeholder="Write something"
       text={text}
       onChange={(e) => setText(e.nativeEvent.text)}
+      placeholder="Tap to type"
+      color="#FF3D7F"
+      textColor="white"
+      fontSize={32}
+      fontWeight="800"
+      textAlign="center"
+      verticalAlign="center"
+      paddingLeft={10}
+      paddingRight={10}
+      paddingTop={4}
+      paddingBottom={4}
+      highlightBorderRadius={10}
       returnKeyType="done"
       onSubmitEditing={() => ref.current?.blur()}
-      style={{ width: '100%', height: 200 }}
+      style={{ width: '100%', height: 240 }}
     />
   );
 }
 ```
 
 Numeric props accept numbers (`fontSize={32}`) or strings (`fontSize="32"`), and colors accept any React Native color string (`"#00A4A3"`, `"rgb(0, 164, 163)"`, `"teal"`). The string-only API of earlier versions keeps working unchanged.
+
+The view is sized by its `style` (like a `TextInput`); the highlight is drawn only behind the text inside it.
+
+## Recipes
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/aqeelkhokhar/react-native-highlight-text/main/docs/assets/recipes.png" width="640" alt="Recipes on iOS and Android: story text, marker, tag chips and a quote" />
+</p>
+
+iOS on the left, Android on the right. All four are in the [example app](example/src/Recipes.tsx). Read-only views use `editable={false}`.
+
+### Story text
+
+```tsx
+<HighlightTextView
+  editable={false}
+  text={'golden hour\nin lisbon'}
+  color="#FF3D7F"
+  textColor="#FFFFFF"
+  fontSize={30}
+  fontWeight="800"
+  textAlign="center"
+  verticalAlign="center"
+  paddingLeft={10}
+  paddingRight={10}
+  paddingTop={4}
+  paddingBottom={4}
+  highlightBorderRadius={10}
+  style={{ height: 130 }}
+/>
+```
+
+### Marker
+
+A soft color plus a large `backgroundInsetTop` paints only the lower part of each line, like a highlighter pen.
+
+```tsx
+<HighlightTextView
+  editable={false}
+  text="Ship the demo before Friday"
+  color="#FFE066"
+  textColor="#1D1D1F"
+  fontSize={24}
+  fontWeight="600"
+  paddingLeft={3}
+  paddingRight={3}
+  backgroundInsetTop={14}
+  highlightBorderRadius={3}
+  verticalAlign="center"
+  style={{ height: 92 }}
+/>
+```
+
+### Tag chips
+
+One small read-only view per tag. Give each chip a width (the example measures the label with a hidden `<Text>`).
+
+```tsx
+<HighlightTextView
+  editable={false}
+  text="#reactnative"
+  color="#E0F2FE"
+  textColor="#075985"
+  fontSize={15}
+  fontWeight="700"
+  textAlign="center"
+  verticalAlign="center"
+  paddingLeft={10}
+  paddingRight={10}
+  paddingTop={6}
+  paddingBottom={6}
+  highlightBorderRadius={14}
+  style={{ width: 130, height: 40 }}
+/>
+```
+
+### Quote
+
+```tsx
+<HighlightTextView
+  editable={false}
+  text={'“Make it simple, but significant.”'}
+  color="#14213D"
+  textColor="#FCA311"
+  fontFamily={Platform.select({ ios: 'Georgia', default: 'serif' })}
+  fontSize={28}
+  lineHeight={34}
+  paddingLeft={8}
+  paddingRight={8}
+  paddingTop={4}
+  paddingBottom={4}
+  backgroundInsetTop={4}
+  backgroundInsetBottom={4}
+  highlightBorderRadius={4}
+  verticalAlign="center"
+  style={{ height: 120 }}
+/>
+```
 
 ## Props
 
@@ -130,7 +252,13 @@ Pass a `ref` (`useRef<HighlightTextViewRef>(null)`) to call:
 | `clear()`       | Clears the text and fires `onChange` with `''`            |
 | `setText(text)` | Replaces the text and fires `onChange` with the new text  |
 
-### Understanding Padding vs Background Insets
+## TypeScript
+
+Exported types: `HighlightTextViewProps`, `HighlightTextViewRef`, `NumericProp`, `VerticalAlignment`, `AutoCapitalize`, `KeyboardType`, `ReturnKeyType`, `TextAlignment`, the event payload types and `HighlightTextViewNativeProps`.
+
+## Styling details
+
+### Padding vs background insets
 
 - **Padding props** (`paddingTop`, `paddingBottom`, etc.): Expand the background **outward** from the text, adding extra colored area around glyphs.
 - **Background inset props** (`backgroundInsetTop`, `backgroundInsetBottom`, etc.): Shrink the background **inward** from the font's line box, creating tighter wrapping around actual glyphs.
@@ -173,7 +301,7 @@ To make backgrounds touch vertically across multiple lines, combine `lineHeight`
 
 **Tip:** Set `lineHeight` to approximately `fontSize + 4` to `fontSize + 8`, then adjust `backgroundInsetTop` and `backgroundInsetBottom` until backgrounds touch smoothly.
 
-### Auto-focusing the Input
+### Auto-focusing the input
 
 To automatically open the keyboard when the component mounts, use the `autoFocus` prop:
 
@@ -195,12 +323,27 @@ This eliminates the need for double-tapping to open the keyboard - it will open 
 
 `fontFamily`, `fontSize` and `fontWeight` can be changed at any time; the view re-measures and redraws the highlight with the new font metrics. The `key={fontFamily}` workaround needed by versions before 1.0 is no longer required (it still works, it just remounts the view).
 
+## Upgrading
+
+Upgrading from 0.1.x? Read the [1.0.0 upgrade notes](CHANGELOG.md#upgrade-notes): a few defaults changed (for example the iOS default `textAlign` is now `left`). All releases are listed in the [CHANGELOG](CHANGELOG.md).
+
+## Example app
+
+The [example app](example/) is a story editor (live typing, color swatches, alignment, font size, ref methods) plus the recipes above:
+
+```sh
+yarn
+yarn example ios      # or: yarn example android
+```
+
 ## Contributing
 
 - [Development workflow](CONTRIBUTING.md#development-workflow)
 - [Sending a pull request](CONTRIBUTING.md#sending-a-pull-request)
 - [Code of conduct](CODE_OF_CONDUCT.md)
 
-## License MIT
+## License
+
+MIT
 
 Made with [create-react-native-library](https://github.com/callstack/react-native-builder-bob)
