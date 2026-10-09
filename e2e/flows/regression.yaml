@@ -85,3 +85,76 @@ appId: highlighttext.example
 - assertVisible: "S8: autofocus"
 - waitForAnimationToEnd
 - takeScreenshot: ${OUT}/s8_autofocus
+# --- S9 api (Phase 2b): placeholder, focus/blur/submit/selection events,
+# ref commands, maxLength, editable alias, runtime font change.
+- tapOn: "Next"
+- assertVisible: "S9: api"
+# The iOS placeholder label is not in the accessibility tree; the screenshot covers it there
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - assertVisible: "Type here"
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}/s9_placeholder
+# ref.focus() -> onFocus; editable={true} wins over isEditable={false}
+- tapOn: "Focus"
+- extendedWaitUntil:
+    visible: "focus=1"
+    timeout: 5000
+- inputText: "hello"
+- extendedWaitUntil:
+    visible: "s9 len=5 text=.hello."
+    timeout: 5000
+- assertVisible: "sel=5-5"
+# returnKeyType="done": Return fires onSubmitEditing and inserts no new line
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: "submit=.hello."
+    timeout: 5000
+- assertVisible: "s9 len=5 text=.hello."
+# ref.blur() -> onBlur
+- tapOn: "Blur"
+- extendedWaitUntil:
+    visible: "blur=1"
+    timeout: 5000
+# ref.setText() / ref.clear() fire onChange
+- tapOn: "Set"
+- extendedWaitUntil:
+    visible: "s9 len=8 text=.Ref text."
+    timeout: 5000
+- tapOn: "Clear"
+- extendedWaitUntil:
+    visible: "s9 len=0 text=.."
+    timeout: 5000
+# The iOS placeholder label is not in the accessibility tree; the screenshot covers it there
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - assertVisible: "Type here"
+# maxLength={12}: typing stops at 12 characters
+- tapOn: "Focus"
+- extendedWaitUntil:
+    visible: "focus=2"
+    timeout: 5000
+- inputText: "abcdefghijklmnop"
+- extendedWaitUntil:
+    visible: "s9 len=12 text=.abcdefghijkl."
+    timeout: 5000
+- assertVisible: "sel=12-12"
+- tapOn: "Blur"
+- extendedWaitUntil:
+    visible: "blur=2"
+    timeout: 5000
+# Runtime font change (serif, 34) must look like a fresh mount with that font
+- tapOn: "Set"
+- extendedWaitUntil:
+    visible: "s9 len=8 text=.Ref text."
+    timeout: 5000
+- tapOn: "Font"
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}/s9_font_changed
+- tapOn: "Remount"
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}/s9_font_remounted
