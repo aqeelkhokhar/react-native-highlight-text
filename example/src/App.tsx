@@ -1,30 +1,41 @@
-import { StyleSheet, SafeAreaView } from 'react-native';
+import { useState } from 'react';
+import { StyleSheet, Text } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { HighlightTextView } from 'react-native-highlight-text-view';
 
 export default function App() {
+  const [text, setText] = useState('Hello World ');
+
   return (
-    <SafeAreaView style={styles.container}>
-      <HighlightTextView
-        color="#B8E0D2"
-        textColor="#000000"
-        fontFamily="satoshi"
-        fontSize="52"
-        fontWeight="bold"
-        textAlign="left"
-        verticalAlign="center"
-        paddingLeft={'25'}
-        paddingRight={'25'}
-        paddingTop={'0'}
-        paddingBottom={'0'}
-        lineSpacing="0"
-        highlightBorderRadius="18"
-        text="Hello World "
-        autoFocus={true}
-        style={styles.highlightText}
-        lineHeight="47"
-        letterSpacing="-0.8"
-      />
-    </SafeAreaView>
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.container}>
+        <HighlightTextView
+          color="#B8E0D2"
+          textColor="#000000"
+          fontFamily="satoshi"
+          fontSize="52"
+          fontWeight="bold"
+          textAlign="left"
+          verticalAlign="center"
+          paddingLeft={'25'}
+          paddingRight={'25'}
+          paddingTop={'0'}
+          paddingBottom={'0'}
+          lineSpacing="0"
+          highlightBorderRadius="18"
+          text={text}
+          isEditable={true}
+          onChange={(e) => setText(e.nativeEvent.text)}
+          autoFocus={true}
+          style={styles.highlightText}
+          lineHeight="47"
+          letterSpacing="-0.8"
+        />
+        <Text testID="char-count" style={styles.counter}>
+          Characters: {text.length}
+        </Text>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
@@ -36,5 +47,10 @@ const styles = StyleSheet.create({
   highlightText: {
     flex: 1,
     margin: 20,
+  },
+  counter: {
+    textAlign: 'center',
+    marginBottom: 12,
+    color: '#555',
   },
 });

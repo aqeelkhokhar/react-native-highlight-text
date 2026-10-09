@@ -84,3 +84,7 @@ android/generated
 
 # React Native Nitro Modules
 nitrogen/
+
+# e2e regression screenshots
+e2e/shots/
+__pycache__/

@@ -1,0 +1,15 @@
+appId: highlighttext.example
+---
+- launchApp:
+    clearState: true
+    stopApp: true
+- extendedWaitUntil:
+    visible: "S1: align"
+    timeout: 60000
+- repeat:
+    times: 7
+    commands:
+      - tapOn: "Next"
+- assertVisible: "S8: autofocus"
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}/autofocus

@@ -8,10 +8,17 @@ import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.text.Editable
+import android.text.InputFilter
+import android.text.InputType
+import android.text.Spanned
 import android.text.TextWatcher
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.KeyEvent
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputConnection
+import android.view.inputmethod.InputMethodManager
 import androidx.appcompat.widget.AppCompatEditText
 import com.facebook.react.common.assets.ReactFontManager
 import kotlin.math.abs
@@ -65,6 +72,18 @@ class HighlightTextView : AppCompatEditText {
   private val radii = FloatArray(8)
 
   var onTextChangeListener: ((String) -> Unit)? = null
+  var focusEventListener: ((Boolean) -> Unit)? = null
+  var onSubmitEditingListener: ((String) -> Unit)? = null
+  var onSelectionChangeListener: ((Int, Int) -> Unit)? = null
+
+  // Input configuration (combined into inputType by updateInputType)
+  private var editableState: Boolean = true
+  private var autoCapitalizeValue: String = ""
+  private var keyboardTypeValue: String = ""
+  // returnKeyType set (and not "default"): Return fires onSubmitEditing instead of a new line
+  private var submitOnReturn: Boolean = false
+  // -1 = no limit; only applies to typing, not to programmatic text
+  private var maxLengthValue: Int = -1
 
   constructor(context: Context?) : super(context!!) {
     init()
@@ -96,6 +115,18 @@ class HighlightTextView : AppCompatEditText {
     includeFontPadding = false
 
     applyLineHeightAndSpacing()
+
+    filters = arrayOf(maxLengthFilter)
+
+    setOnEditorActionListener { _, actionId, event ->
+      val isEnterKey = event?.keyCode == KeyEvent.KEYCODE_ENTER
+      if (submitOnReturn && (actionId != EditorInfo.IME_ACTION_UNSPECIFIED || isEnterKey)) {
+        onSubmitEditingListener?.invoke(text?.toString() ?: "")
+        true
+      } else {
+        false
+      }
+    }
 
     addTextChangedListener(object : TextWatcher {
       override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -150,6 +181,11 @@ class HighlightTextView : AppCompatEditText {
 
     val length = text.length
     if (length == 0) return
+
+    // All character rects go into ONE path that is filled once. Filling each rect
+    // separately anti-aliases every edge on its own, which leaves faint seams where
+    // neighbouring rects meet or overlap; a single fill gives the union clean edges.
+    backgroundPath.reset()
 
     for (i in 0 until length) {
       val ch = text[i]
@@ -387,10 +423,10 @@ class HighlightTextView : AppCompatEditText {
       radii[4] = br; radii[5] = br
       radii[6] = bl; radii[7] = bl
 
-      backgroundPath.reset()
       backgroundPath.addRoundRect(backgroundRect, radii, Path.Direction.CW)
-      canvas.drawPath(backgroundPath, backgroundPaint)
     }
+
+    canvas.drawPath(backgroundPath, backgroundPaint)
   }
 
   private fun lineWidthsEqual(w1: Float, w2: Float): Boolean {
@@ -642,9 +678,197 @@ class HighlightTextView : AppCompatEditText {
         // Move cursor to end of text
         text?.length?.let { setSelection(it) }
         val imm = context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
-        imm?.showSoftInput(this, android.view.inputmethod.InputMethodManager.SHOW_FORCED)
+        imm?.showSoftInput(this, 0)
       }, 100)
     }
+  }
+
+  // --- Input configuration -----------------------------------------------------
+
+  private val maxLengthFilter = InputFilter { source, start, end, dest, dstart, dend ->
+    val max = maxLengthValue
+    if (max < 0 || isUpdatingText) {
+      null // no limit, or programmatic text (text prop / setText command)
+    } else {
+      val keep = max - (dest.length - (dend - dstart))
+      when {
+        keep <= 0 -> ""
+        keep >= end - start -> null
+        else -> {
+          var cut = start + keep
+          if (Character.isHighSurrogate(source[cut - 1])) {
+            cut--
+            if (cut == start) return@InputFilter ""
+          }
+          source.subSequence(start, cut)
+        }
+      }
+    }
+  }
+
+  fun setEditableProp(value: Boolean) {
+    editableState = value
+    isFocusable = value
+    isFocusableInTouchMode = value
+    isEnabled = value
+    updateInputType()
+    // Prevent keyboard from showing when not editable (and restore it when editable again)
+    setShowSoftInputOnFocus(value)
+  }
+
+  fun setAutoCapitalizeProp(value: String?) {
+    autoCapitalizeValue = value ?: ""
+    updateInputType()
+  }
+
+  fun setKeyboardTypeProp(value: String?) {
+    keyboardTypeValue = value ?: ""
+    updateInputType()
+  }
+
+  fun setMaxLengthProp(value: Int) {
+    maxLengthValue = value
+  }
+
+  fun setReturnKeyTypeProp(value: String?) {
+    val type = value ?: ""
+    submitOnReturn = type.isNotEmpty() && type != "default"
+    imeOptions = when (type) {
+      "done" -> EditorInfo.IME_ACTION_DONE
+      "go" -> EditorInfo.IME_ACTION_GO
+      "next" -> EditorInfo.IME_ACTION_NEXT
+      "search" -> EditorInfo.IME_ACTION_SEARCH
+      "send" -> EditorInfo.IME_ACTION_SEND
+      "previous" -> EditorInfo.IME_ACTION_PREVIOUS
+      "none" -> EditorInfo.IME_ACTION_NONE
+      else -> EditorInfo.IME_ACTION_UNSPECIFIED
+    }
+    restartInputIfActive()
+  }
+
+  fun setPlaceholderProp(value: String?) {
+    hint = value
+  }
+
+  fun setPlaceholderTextColorProp(color: Int?) {
+    if (color != null) {
+      setHintTextColor(color)
+    } else {
+      setHintTextColor(defaultHintTextColors)
+    }
+  }
+
+  private val defaultHintTextColors = hintTextColors
+
+  private fun updateInputType() {
+    val (inputClass, variation) = when (keyboardTypeValue) {
+      "email-address" -> InputType.TYPE_CLASS_TEXT to InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+      "url" -> InputType.TYPE_CLASS_TEXT to InputType.TYPE_TEXT_VARIATION_URI
+      "visible-password" -> InputType.TYPE_CLASS_TEXT to InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+      "numeric" -> InputType.TYPE_CLASS_NUMBER to
+        (InputType.TYPE_NUMBER_FLAG_SIGNED or InputType.TYPE_NUMBER_FLAG_DECIMAL)
+      "decimal-pad" -> InputType.TYPE_CLASS_NUMBER to InputType.TYPE_NUMBER_FLAG_DECIMAL
+      "number-pad" -> InputType.TYPE_CLASS_NUMBER to 0
+      "phone-pad" -> InputType.TYPE_CLASS_PHONE to 0
+      else -> InputType.TYPE_CLASS_TEXT to 0
+    }
+
+    var type = inputClass or variation
+    if (inputClass == InputType.TYPE_CLASS_TEXT) {
+      // Always keep multiline flag to preserve newlines, even when not editable
+      type = type or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+      type = type or when (autoCapitalizeValue) {
+        "sentences" -> InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+        "words" -> InputType.TYPE_TEXT_FLAG_CAP_WORDS
+        "characters" -> InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
+        else -> 0
+      }
+      if (!editableState) {
+        type = type or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+      }
+    }
+
+    // setInputType can switch the typeface (password variations) and single-line
+    // mode (non-text classes); keep ours so the rendering does not change.
+    val currentTypeface = typeface
+    inputType = type
+    if (inputClass != InputType.TYPE_CLASS_TEXT) {
+      setSingleLine(false)
+      maxLines = Int.MAX_VALUE
+      setHorizontallyScrolling(false)
+    }
+    typeface = currentTypeface
+  }
+
+  private fun restartInputIfActive() {
+    val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+    if (hasFocus()) imm?.restartInput(this)
+  }
+
+  override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection? {
+    val connection = super.onCreateInputConnection(outAttrs)
+    if (submitOnReturn) {
+      // Multi-line editors hide the action key by default; show it so Return submits
+      outAttrs.imeOptions = outAttrs.imeOptions and EditorInfo.IME_FLAG_NO_ENTER_ACTION.inv()
+    }
+    return connection
+  }
+
+  override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+    if (submitOnReturn && (keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER)) {
+      // Hardware Return key: submit instead of inserting a new line
+      return true
+    }
+    return super.onKeyDown(keyCode, event)
+  }
+
+  override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+    if (submitOnReturn && (keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER)) {
+      onSubmitEditingListener?.invoke(text?.toString() ?: "")
+      return true
+    }
+    return super.onKeyUp(keyCode, event)
+  }
+
+  override fun onFocusChanged(focused: Boolean, direction: Int, previouslyFocusedRect: android.graphics.Rect?) {
+    super.onFocusChanged(focused, direction, previouslyFocusedRect)
+    focusEventListener?.invoke(focused)
+  }
+
+  override fun onSelectionChanged(selStart: Int, selEnd: Int) {
+    super.onSelectionChanged(selStart, selEnd)
+    // Called from the TextView constructor before our properties exist
+    @Suppress("SENSELESS_COMPARISON")
+    if (onSelectionChangeListener != null) {
+      onSelectionChangeListener?.invoke(minOf(selStart, selEnd), maxOf(selStart, selEnd))
+    }
+  }
+
+  // --- Commands (ref methods) --------------------------------------------------
+
+  fun focusFromJs() {
+    if (!editableState) return
+    requestFocus()
+    val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+    imm?.showSoftInput(this, 0)
+  }
+
+  fun blurFromJs() {
+    val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+    imm?.hideSoftInputFromWindow(windowToken, 0)
+    clearFocus()
+  }
+
+  /** Replaces the text programmatically and reports it through onChange. */
+  fun setTextFromJs(newText: String) {
+    if (this.text?.toString() != newText) {
+      isUpdatingText = true
+      setText(newText)
+      isUpdatingText = false
+      text?.length?.let { setSelection(it) }
+      invalidate()
+    }
+    onTextChangeListener?.invoke(newText)
   }
 
   // --- Layout helpers ----------------------------------------------------------
@@ -653,20 +877,20 @@ class HighlightTextView : AppCompatEditText {
     val metrics = resources.displayMetrics
     
     if (customLineHeight > 0f) {
-      // customLineHeight comes from JS as "points"; convert to px using scaledDensity
-      val desiredLineHeightPx = customLineHeight * metrics.scaledDensity
+      // customLineHeight comes from JS as "points"; convert to px as sp
+      val desiredLineHeightPx = spToPx(customLineHeight, metrics)
       val textHeightPx = textSize
       if (textHeightPx > 0f) {
         val multiplier = desiredLineHeightPx / textHeightPx
         val extraSpacing = if (customLineSpacing != 0f) {
-          customLineSpacing * metrics.scaledDensity
+          spToPx(customLineSpacing, metrics)
         } else {
           0f
         }
         setLineSpacing(extraSpacing, multiplier)
       }
     } else if (customLineSpacing != 0f) {
-      val extraSpacing = customLineSpacing * metrics.scaledDensity
+      val extraSpacing = spToPx(customLineSpacing, metrics)
       setLineSpacing(extraSpacing, 1.0f)
     } else {
       // Default: add extra spacing equal to vertical padding so backgrounds don't collide
@@ -675,11 +899,14 @@ class HighlightTextView : AppCompatEditText {
     }
   }
 
+  private fun spToPx(value: Float, metrics: android.util.DisplayMetrics): Float =
+    TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, value, metrics)
+
   private fun applyLetterSpacing() {
     // React Native's letterSpacing is specified in layout points. Convert that to
     // Android's "em" units: pxSpacing / textSizePx.
     val metrics = resources.displayMetrics
-    val pxSpacing = letterSpacingPoints * metrics.scaledDensity
+    val pxSpacing = spToPx(letterSpacingPoints, metrics)
     val textPx = textSize
     if (textPx > 0f) {
       super.setLetterSpacing(pxSpacing / textPx)
