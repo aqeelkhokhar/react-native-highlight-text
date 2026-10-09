@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1 (unreleased)
+
+- Docs: new README with demo GIFs, recipes and full API reference; example app showcase.
+
 ## 1.0.0 (2026-10-09)
 
 First stable release. `HighlightTextView` now behaves like a regular React Native input: numbers and any color string for props, `placeholder`, `maxLength`, keyboard props, focus/blur/submit/selection events and ref methods. It also fixes several long-standing iOS state bugs and the Android highlight seams. Existing code that passes strings keeps working.
