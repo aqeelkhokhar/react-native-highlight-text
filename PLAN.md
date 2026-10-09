@@ -99,7 +99,8 @@ Goal: an API that feels like a normal React Native component, plus the TextInput
 - [x] Android: replace deprecated `DisplayMetrics.scaledDensity` with `TypedValue.applyDimension(COMPLEX_UNIT_SP, …)`
 - [x] iOS perf: cache per-character sizes / use glyph bounding rects instead of `sizeWithAttributes` per draw (Phase 2b: memoized per font + character, same values so the drawing is identical)
 - [x] Tests: Jest for prop conversion; Maestro flows on example (type → onChange, focus/blur)
-- [ ] Release `1.0.0` with CHANGELOG (started: `CHANGELOG.md`, Unreleased section)
+- [x] Prepare `1.0.0`: `package.json` version, CHANGELOG `1.0.0 (unreleased)` with upgrade notes, release-it config (not released: no tag, no publish)
+- [ ] Release `1.0.0` (`yarn release --no-increment`, see the release checklist)
 
 ### Phase 2a verification (2026-10-08)
 
@@ -127,9 +128,36 @@ Developer-facing API (JS wrapper with number/color conversion, `editable` alias,
 
 Still open: with no `verticalAlign` iOS draws at the top and Android centers (documented, kept for 1.0.0); iOS still draws per-character rounded rects. Android: newer React Native already sends `topFocus`/`topBlur` from `BaseViewManager`, so the view only sends its own on versions that do not (avoids double events).
 
+### Phase 2 final verification (2026-10-09)
+
+**Focus/blur events (exactly once per focus and per blur).** S9 `api` scenario, counters after the flow (Focus, Blur, Focus, Blur): `focus=2 blur=2` everywhere, and the flow's `focus=1`/`blur=1` steps pass.
+
+| Target                                           | Result                                                                                                     |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| Expo SDK 57 (RN 0.86.3), Android 17 emu, Release | once each (full 96-step flow passes)                                                                       |
+| Expo SDK 57, Android, Release with R8 minify     | **twice per focus before the fix** (R8 renamed the class the check looked for); once each after the fix    |
+| CLI RN 0.87.1, iOS 26.1 sim, Release             | once each                                                                                                  |
+| CLI RN 0.87.1, Android 17 emu, Release           | once each                                                                                                  |
+| Expo iOS                                         | not built: Expo SDK 57 generated scripts break on the space in the repo path (upstream issue, see Phase 1) |
+
+React Native 0.81+ attaches `BaseVMFocusChangeListener` and sends `topFocus`/`topBlur` for every view; 0.76 to 0.79 attach no focus listener at all (checked in the RN sources). The view now sends its own events only when no focus listener is attached.
+
+**Final regression: `main` (0.1.33, RN 0.81.1) vs `feat/phase-2` (RN 0.87.1).** Release builds, `main` in a temporary worktree with prebuilt RN core. `main` has no S9 and no props for it, so the baseline ran S1 to S8 (the S1 fresh-mount read-only check made optional, since `main` fails it on iOS); `feat/phase-2` ran the full 96-step flow and passed on both platforms.
+
+| Screen         | iOS 26.1 sim                                                           | Android 17 emu                                               |
+| -------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------ |
+| S1, S2, S4     | identical                                                              | highlight edge anti-aliasing (one-path fill) + title text AA |
+| S3 vertical    | `verticalAlign="center"` now centred (iOS center fix)                  | edge AA + title text AA                                      |
+| S5 spacing     | inset box drawn with its own radius/padding (iOS recycling fix)        | edge AA + title text AA                                      |
+| S6 initial, S7 | identical                                                              | edge AA + title text AA                                      |
+| S6 after       | cursor blink                                                           | edge AA + title text AA                                      |
+| S8 autofocus   | default padding/radius instead of S7's leaked ones (iOS recycling fix) | edge AA + title text AA                                      |
+
+Every Android body difference is a 1 px anti-aliasing change on highlight outlines (no pixel differs by more than 60 in S5/S8, one row in S4), which is the CHANGELOG's Android seams / one-shape entry. The iOS default `textAlign` change does not show up in any of these screenshots (no visible difference in S1 to S8). `yarn lint`, `typecheck`, `test`, `prepare` and `npm pack --dry-run` green.
+
 ---
 
-## Phase 3 — Growth / discoverability (ongoing)
+## Phase 3 — Growth / discoverability (next)
 
 - [ ] README rewrite: hero GIF (typing + Instagram-story style), recipes (story text, marker highlight, tag chips), full typed props table
 - [ ] GitHub repo: description, topics, social preview image; align repo name with npm name
@@ -146,4 +174,5 @@ Still open: with no `verticalAlign` iOS draws at the top and Android centers (do
 
 1. `yarn lint && yarn typecheck && yarn test && yarn prepare`
 2. Build example iOS + Android (CLI) and Expo dev build
-3. `yarn release` (release-it: version, changelog, tag, npm publish, GitHub release)
+3. `yarn release` (release-it: version, tag, npm publish, GitHub release). For 1.0.0 the version is already set, so run `yarn release --no-increment`.
+4. CHANGELOG.md is hand-written: the conventional-changelog plugin has `infile: false` (it only recommends the version), and the GitHub release body is the matching `## <version>` section of CHANGELOG.md (`github.releaseNotes`). Change `## 1.0.0 (unreleased)` to the release date before releasing.

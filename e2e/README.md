@@ -84,3 +84,7 @@ Use Release builds so the JS bundle is embedded (no Metro needed) and both build
 - iOS: S1, S2 and S4 to S8 are pixel-identical. S3 changed as intended: `verticalAlign="center"` is now centered (it used to sit at the top).
 - Android: S1 to S5 and the initial S6 are pixel-identical. S6 after typing, S7 and S8 differ only in the Gboard suggestion strip and the cursor blink.
 - Runtime font change vs remount: identical on iOS. On Android only the `sel=` status line differs.
+
+## Phase 2 final result (2026-10-09)
+
+`main` (0.1.33, RN 0.81.1, S1 to S8 only) vs `feat/phase-2` (RN 0.87.1, full flow, passes): on iOS S1, S2, S4, S6 initial and S7 are pixel-identical; S3 (centred `verticalAlign="center"`), S5 and S8 (no recycled padding/radius) changed as intended; S6 after typing differs only in the cursor blink. On Android every screen differs only by 1 px anti-aliasing on highlight outlines (one-path fill) and RN's title text. `onFocus`/`onBlur` fire exactly once on iOS and Android (RN 0.87.1) and on Expo SDK 57 Android (RN 0.86.3), including an R8-minified build. For the baseline, the S1 tap and read-only assertion were made optional because `main` exposes no text to Maestro on iOS and fails that check.
