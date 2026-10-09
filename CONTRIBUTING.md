@@ -76,6 +76,16 @@ Remember to add tests for your change if possible. Run the unit tests by:
 yarn test
 ```
 
+### Adding or changing a prop
+
+The library is a thin JS wrapper over a codegen (Fabric) native component, with no hand-written bridging module:
+
+1. Declare the native prop in `src/HighlightTextViewNativeComponent.ts` (the codegen spec).
+2. Expose it in `HighlightTextViewProps` in `src/HighlightTextView.tsx`. Numeric and color props are converted to strings in `toNativeProps`, so add new ones to `NUMERIC_PROPS` or `COLOR_PROPS`.
+3. Implement it on both platforms: `ios/HighlightTextView.mm` and `android/src/main/java/com/highlighttext/`.
+4. Run `yarn prepare`, rebuild the example app, and document the prop in the README tables and `CHANGELOG.md`.
+5. For rendering changes, run the screenshot comparison in [`e2e/README.md`](./e2e/README.md).
+
 ### Commit message convention
 
 We follow the [conventional commits specification](https://www.conventionalcommits.org/en) for our commit messages:

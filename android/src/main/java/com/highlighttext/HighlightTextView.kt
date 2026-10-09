@@ -22,6 +22,7 @@ import android.view.inputmethod.InputMethodManager
 import androidx.appcompat.widget.AppCompatEditText
 import com.facebook.react.common.assets.ReactFontManager
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /**
  * Custom EditText that mimics the iOS implementation by drawing per-character
@@ -31,7 +32,8 @@ import kotlin.math.abs
  * logic independent from Android's line breaking.
  */
 class HighlightTextView : AppCompatEditText {
-  // Visual props
+  // Visual props. Lengths (radius, padding, insets) are stored in layout points
+  // (dp), the same units iOS uses, and converted to pixels where they are used.
   private var characterBackgroundColor: Int = Color.parseColor("#FFFF00")
   private var textColorValue: Int = Color.BLACK
   private var cornerRadius: Float = 4f
@@ -70,6 +72,12 @@ class HighlightTextView : AppCompatEditText {
   private val backgroundRect = RectF()
   private val backgroundPath = Path()
   private val radii = FloatArray(8)
+
+  private companion object {
+    // Padded character rects closer than this (px) join into one run, so
+    // sub-pixel gaps never show up as seams.
+    const val RUN_JOIN_TOLERANCE_PX = 0.5f
+  }
 
   var onTextChangeListener: ((String) -> Unit)? = null
   var focusEventListener: ((Boolean) -> Unit)? = null
@@ -169,265 +177,183 @@ class HighlightTextView : AppCompatEditText {
   }
 
   private fun drawCharacterBackgrounds(canvas: Canvas, text: CharSequence, layout: android.text.Layout) {
+    if (text.isEmpty()) return
+
     backgroundPaint.color = characterBackgroundColor
     val paint = paint
-    val radius = if (highlightBorderRadius > 0f) highlightBorderRadius else cornerRadius
+    val density = resources.displayMetrics.density
+    val radius = (if (highlightBorderRadius > 0f) highlightBorderRadius else cornerRadius) * density
+    val padLeft = charPaddingLeft * density
+    val padRight = charPaddingRight * density
+    val padTop = charPaddingTop * density
+    val padBottom = charPaddingBottom * density
+    val insetTop = backgroundInsetTop * density
+    val insetBottom = backgroundInsetBottom * density
+    val insetLeft = backgroundInsetLeft * density
+    val insetRight = backgroundInsetRight * density
+    // Like iOS, the background starts from the line box: the custom line height
+    // when one is set, otherwise the font's own line height. Its bottom sits on
+    // the font's descent, so extra line height goes above the text as on iOS.
+    val fm = paint.fontMetrics
+    val lineBoxHeight = if (customLineHeight > 0f) {
+      spToPx(customLineHeight, resources.displayMetrics)
+    } else {
+      fm.descent - fm.ascent
+    }
 
-    // Precompute horizontal alignment flags once per draw pass
     val horizontalGravity = gravity and Gravity.HORIZONTAL_GRAVITY_MASK
-    val isLeftAlignedView = horizontalGravity == Gravity.START || horizontalGravity == Gravity.LEFT
-    val isRightAlignedView = horizontalGravity == Gravity.END || horizontalGravity == Gravity.RIGHT
-    val isCenterAlignedView = horizontalGravity == Gravity.CENTER_HORIZONTAL
+    val isRightAligned = horizontalGravity == Gravity.END || horizontalGravity == Gravity.RIGHT
 
-    val length = text.length
-    if (length == 0) return
-
-    // All character rects go into ONE path that is filled once. Filling each rect
-    // separately anti-aliases every edge on its own, which leaves faint seams where
-    // neighbouring rects meet or overlap; a single fill gives the union clean edges.
+    // All highlight shapes go into ONE path that is filled once. Filling each
+    // shape separately anti-aliases every edge on its own, which leaves faint
+    // seams where neighbouring shapes meet or overlap.
     backgroundPath.reset()
 
-    for (i in 0 until length) {
-      val ch = text[i]
-      // Match iOS: skip spaces and control characters for background
-      if (ch == '\n' || ch == '\t' || ch == ' ') continue
-
-      val line = layout.getLineForOffset(i)
+    for (line in 0 until layout.lineCount) {
       val lineStart = layout.getLineStart(line)
       val lineEnd = layout.getLineEnd(line)
 
-      // Determine adjacency for selective rounding
-      val hasLeftNeighbor = if (i > 0) {
-        val prevCh = text[i - 1]
-        val sameLine = layout.getLineForOffset(i - 1) == line
-        sameLine && prevCh != '\n' && prevCh != '\t'
-      } else false
-
-      val hasRightNeighbor = if (i < length - 1) {
-        val nextCh = text[i + 1]
-        val sameLine = layout.getLineForOffset(i + 1) == line
-        
-        if (!sameLine || nextCh == '\n' || nextCh == '\t') {
-          false
-        } else if (nextCh == ' ') {
-          // Lookahead: If next is space, check if any visible char follows on same line
-          var hasVisibleAfter = false
-          for (k in i + 2 until length) {
-            if (layout.getLineForOffset(k) != line) break
-            val c = text[k]
-            if (c == '\n' || c == '\t') break
-            if (c != ' ') {
-              hasVisibleAfter = true
-              break
-            }
-          }
-          hasVisibleAfter
-        } else {
-          true
-        }
-      } else false
-
-      // Horizontal bounds based on layout positions
-      val xStart = layout.getPrimaryHorizontal(i)
-      val isLastCharInLine = i == lineEnd - 1
-      val xEnd = if (!isLastCharInLine && i + 1 < length) {
-        layout.getPrimaryHorizontal(i + 1)
-      } else {
-        // Fallback for last character in the line/text
-        xStart + paint.measureText(text, i, i + 1)
-      }
-
-      // Vertical bounds based on font metrics around the baseline, so
-      // they are independent from Android's line spacing mechanics.
+      // Same geometry as iOS for every character: the line box (vertical) and
+      // the glyph advance (horizontal) shrink by the insets, then expand
+      // outward by the padding. Spaces, tabs and newlines get no background.
       val baseline = layout.getLineBaseline(line).toFloat()
-      val fm = paint.fontMetrics
+      val bottom = baseline + fm.descent - insetBottom + padBottom
+      val top = baseline + fm.descent - lineBoxHeight + insetTop - padTop
+      if (bottom <= top) continue
 
-      var left = xStart
-      var right = xEnd
-      var top = baseline + fm.ascent
-      var bottom = baseline + fm.descent
+      // Characters whose padded rects touch or overlap (also across a space,
+      // when the padding covers it) form one run, drawn as a single rounded
+      // shape so a line reads as one continuous highlight like on iOS.
+      var runLeft = 0f
+      var runRight = 0f
+      var hasRun = false
+      var isFirstRun = true
+      var tabSinceRun = false
 
-      // For right-aligned text, ensure the outermost character on each line
-      // snaps to the line's visual right edge so the highlight's right side
-      // forms a clean vertical column across wrapped lines.
-      if (isRightAlignedView && !hasRightNeighbor) {
-        right = layout.getLineRight(line)
+      for (i in lineStart until lineEnd) {
+        val ch = text[i]
+        if (ch == '\n' || ch == ' ') continue
+        if (ch == '\t') {
+          tabSinceRun = true
+          continue
+        }
+
+        val xStart = layout.getPrimaryHorizontal(i)
+        val xEnd = if (i + 1 < lineEnd) {
+          layout.getPrimaryHorizontal(i + 1)
+        } else {
+          xStart + paint.measureText(text, i, i + 1)
+        }
+        val left = minOf(xStart, xEnd) + insetLeft - padLeft
+        val right = maxOf(xStart, xEnd) - insetRight + padRight
+        if (right <= left) continue
+
+        if (hasRun && !tabSinceRun && left <= runRight + RUN_JOIN_TOLERANCE_PX) {
+          runLeft = minOf(runLeft, left)
+          runRight = maxOf(runRight, right)
+        } else {
+          if (hasRun) {
+            addRun(layout, text, line, runLeft, runRight, top, bottom, radius, isFirstRun, false)
+            isFirstRun = false
+          }
+          runLeft = left
+          runRight = right
+          hasRun = true
+        }
+        tabSinceRun = false
       }
 
-      // First shrink by background insets (from the line box)
-      top += backgroundInsetTop
-      bottom -= backgroundInsetBottom
-      left += backgroundInsetLeft
-      right -= backgroundInsetRight
-
-      // Then expand outward by per-character padding
-      left -= charPaddingLeft
-      right += charPaddingRight
-      top -= charPaddingTop
-      bottom += charPaddingBottom
-
-      if (right <= left || bottom <= top) continue
-
-      backgroundRect.set(left, top, right, bottom)
-      
-      // Detect paragraph boundaries (empty lines above/below)
-      val isFirstLineOfParagraph = line == 0 || isLineEmpty(text, layout, line - 1)
-      val isLastLineOfParagraph = line == layout.lineCount - 1 || isLineEmpty(text, layout, line + 1)
-      
-      // Use precomputed text alignment flags
-      val isLeftAligned = isLeftAlignedView
-      val isRightAligned = isRightAlignedView
-      val isCenterAligned = isCenterAlignedView
-      
-      var tl = 0f
-      var tr = 0f
-      var br = 0f
-      var bl = 0f
-
-      when {
-        isLeftAligned -> {
-          // LEFT ALIGNMENT (default behavior)
-          // Left Edge Logic
-          if (!hasLeftNeighbor) {
-            // Top-Left: Round if first line of paragraph
-            tl = if (isFirstLineOfParagraph) radius else 0f
-            // Bottom-Left: Round if last line of paragraph
-            bl = if (isLastLineOfParagraph) radius else 0f
-          }
-
-          // Right Edge Logic
-          if (!hasRightNeighbor) {
-            val currentLineWidth = layout.getLineMax(line)
-
-            // Top-Right
-            if (isFirstLineOfParagraph) {
-              tr = radius
-            } else {
-              val prevLineWidth = layout.getLineMax(line - 1)
-              // Round Top-Right only if this line extends further than the line above
-              tr = if (!lineWidthsEqual(currentLineWidth, prevLineWidth) &&
-                currentLineWidth > prevLineWidth
-              ) radius else 0f
-            }
-
-            // Bottom-Right
-            if (isLastLineOfParagraph) {
-              br = radius
-            } else {
-              val nextLineWidth = layout.getLineMax(line + 1)
-              // Round Bottom-Right only if this line extends further than the line below
-              br = if (!lineWidthsEqual(currentLineWidth, nextLineWidth) &&
-                currentLineWidth > nextLineWidth
-              ) radius else 0f
-            }
-          }
+      if (hasRun) {
+        // For right-aligned text, snap the line's outermost highlight to the
+        // line's visual right edge so wrapped lines form a clean column.
+        if (isRightAligned) {
+          runRight = layout.getLineRight(line) - insetRight + padRight
         }
-        
-        isRightAligned -> {
-          // RIGHT ALIGNMENT (mirror of left alignment)
-          // Right Edge Logic
-          if (!hasRightNeighbor) {
-            // Top-Right: Round if first line of paragraph
-            tr = if (isFirstLineOfParagraph) radius else 0f
-            // Bottom-Right: Round if last line of paragraph
-            br = if (isLastLineOfParagraph) radius else 0f
-          }
-
-          // Left Edge Logic
-          if (!hasLeftNeighbor) {
-            val currentLineWidth = layout.getLineMax(line)
-
-            // Top-Left
-            if (isFirstLineOfParagraph) {
-              tl = radius
-            } else {
-              val prevLineWidth = layout.getLineMax(line - 1)
-              // Round Top-Left only if this line extends further than the line above
-              tl = if (!lineWidthsEqual(currentLineWidth, prevLineWidth) &&
-                currentLineWidth > prevLineWidth
-              ) radius else 0f
-            }
-
-            // Bottom-Left
-            if (isLastLineOfParagraph) {
-              bl = radius
-            } else {
-              val nextLineWidth = layout.getLineMax(line + 1)
-              // Round Bottom-Left only if this line extends further than the line below
-              bl = if (!lineWidthsEqual(currentLineWidth, nextLineWidth) &&
-                currentLineWidth > nextLineWidth
-              ) radius else 0f
-            }
-          }
-        }
-        
-        isCenterAligned -> {
-          // CENTER ALIGNMENT
-          val currentLineWidth = layout.getLineMax(line)
-          
-          // Left Edge Logic
-          if (!hasLeftNeighbor) {
-            // Top-Left
-            if (isFirstLineOfParagraph) {
-              tl = radius
-            } else {
-              val prevLineWidth = layout.getLineMax(line - 1)
-              // Round Top-Left only if this line extends further than the line above
-              tl = if (!lineWidthsEqual(currentLineWidth, prevLineWidth) &&
-                currentLineWidth > prevLineWidth
-              ) radius else 0f
-            }
-
-            // Bottom-Left
-            if (isLastLineOfParagraph) {
-              bl = radius
-            } else {
-              val nextLineWidth = layout.getLineMax(line + 1)
-              // Round Bottom-Left only if this line extends further than the line below
-              bl = if (!lineWidthsEqual(currentLineWidth, nextLineWidth) &&
-                currentLineWidth > nextLineWidth
-              ) radius else 0f
-            }
-          }
-
-          // Right Edge Logic
-          if (!hasRightNeighbor) {
-            // Top-Right
-            if (isFirstLineOfParagraph) {
-              tr = radius
-            } else {
-              val prevLineWidth = layout.getLineMax(line - 1)
-              // Round Top-Right only if this line extends further than the line above
-              tr = if (!lineWidthsEqual(currentLineWidth, prevLineWidth) &&
-                currentLineWidth > prevLineWidth
-              ) radius else 0f
-            }
-
-            // Bottom-Right
-            if (isLastLineOfParagraph) {
-              br = radius
-            } else {
-              val nextLineWidth = layout.getLineMax(line + 1)
-              // Round Bottom-Right only if this line extends further than the line below
-              br = if (!lineWidthsEqual(currentLineWidth, nextLineWidth) &&
-                currentLineWidth > nextLineWidth
-              ) radius else 0f
-            }
-          }
-        }
+        addRun(layout, text, line, runLeft, runRight, top, bottom, radius, isFirstRun, true)
       }
-
-      // Arrays: Top-Left x,y; Top-Right x,y; Bottom-Right x,y; Bottom-Left x,y
-      radii[0] = tl; radii[1] = tl
-      radii[2] = tr; radii[3] = tr
-      radii[4] = br; radii[5] = br
-      radii[6] = bl; radii[7] = bl
-
-      backgroundPath.addRoundRect(backgroundRect, radii, Path.Direction.CW)
     }
 
     canvas.drawPath(backgroundPath, backgroundPaint)
   }
+
+  /**
+   * Adds one highlight run to the path. Sides in the middle of a line are fully
+   * rounded. The line's outer sides are rounded where the shape has an outside
+   * corner: on the first/last line of a paragraph, or where this line extends
+   * further than the line above/below (the side text is anchored to only rounds
+   * at paragraph boundaries).
+   */
+  private fun addRun(
+    layout: android.text.Layout,
+    text: CharSequence,
+    line: Int,
+    left: Float,
+    right: Float,
+    top: Float,
+    bottom: Float,
+    radius: Float,
+    isLineStart: Boolean,
+    isLineEnd: Boolean
+  ) {
+    if (right <= left) return
+    backgroundRect.set(left, top, right, bottom)
+
+    val horizontalGravity = gravity and Gravity.HORIZONTAL_GRAVITY_MASK
+    val isLeftAligned = horizontalGravity == Gravity.START || horizontalGravity == Gravity.LEFT
+    val isRightAligned = horizontalGravity == Gravity.END || horizontalGravity == Gravity.RIGHT
+    val isCenterAligned = horizontalGravity == Gravity.CENTER_HORIZONTAL
+
+    // Detect paragraph boundaries (empty lines above/below)
+    val isFirstLineOfParagraph = line == 0 || isLineEmpty(text, layout, line - 1)
+    val isLastLineOfParagraph = line == layout.lineCount - 1 || isLineEmpty(text, layout, line + 1)
+    val currentLineWidth = layout.getLineMax(line)
+
+    // Side the text is anchored to: rounded only at paragraph boundaries
+    val anchoredTop = if (isFirstLineOfParagraph) radius else 0f
+    val anchoredBottom = if (isLastLineOfParagraph) radius else 0f
+    // Ragged side: also rounded where this line extends past the line above/below
+    val raggedTop = when {
+      isFirstLineOfParagraph -> radius
+      extendsBeyond(currentLineWidth, layout.getLineMax(line - 1)) -> radius
+      else -> 0f
+    }
+    val raggedBottom = when {
+      isLastLineOfParagraph -> radius
+      extendsBeyond(currentLineWidth, layout.getLineMax(line + 1)) -> radius
+      else -> 0f
+    }
+
+    var tl = radius
+    var bl = radius
+    var tr = radius
+    var br = radius
+
+    if (isLineStart) {
+      when {
+        isLeftAligned -> { tl = anchoredTop; bl = anchoredBottom }
+        isRightAligned || isCenterAligned -> { tl = raggedTop; bl = raggedBottom }
+        else -> { tl = 0f; bl = 0f }
+      }
+    }
+    if (isLineEnd) {
+      when {
+        isRightAligned -> { tr = anchoredTop; br = anchoredBottom }
+        isLeftAligned || isCenterAligned -> { tr = raggedTop; br = raggedBottom }
+        else -> { tr = 0f; br = 0f }
+      }
+    }
+
+    // Arrays: Top-Left x,y; Top-Right x,y; Bottom-Right x,y; Bottom-Left x,y
+    radii[0] = tl; radii[1] = tl
+    radii[2] = tr; radii[3] = tr
+    radii[4] = br; radii[5] = br
+    radii[6] = bl; radii[7] = bl
+
+    backgroundPath.addRoundRect(backgroundRect, radii, Path.Direction.CW)
+  }
+
+  private fun extendsBeyond(currentLineWidth: Float, otherLineWidth: Float): Boolean =
+    !lineWidthsEqual(currentLineWidth, otherLineWidth) && currentLineWidth > otherLineWidth
 
   private fun lineWidthsEqual(w1: Float, w2: Float): Boolean {
     // Small tolerance so lines that should visually match are treated as equal
@@ -508,11 +434,12 @@ class HighlightTextView : AppCompatEditText {
 
   private fun updateViewPadding() {
     // Keep view padding in sync so backgrounds are not clipped at the edges
+    val density = resources.displayMetrics.density
     setPadding(
-      charPaddingLeft.toInt(),
-      charPaddingTop.toInt(),
-      charPaddingRight.toInt(),
-      charPaddingBottom.toInt()
+      (charPaddingLeft * density).roundToInt(),
+      (charPaddingTop * density).roundToInt(),
+      (charPaddingRight * density).roundToInt(),
+      (charPaddingBottom * density).roundToInt()
     )
   }
 
@@ -875,26 +802,19 @@ class HighlightTextView : AppCompatEditText {
 
   private fun applyLineHeightAndSpacing() {
     val metrics = resources.displayMetrics
-    
+    // lineSpacing (Android only) is extra space between lines, in points
+    val extraSpacing = if (customLineSpacing != 0f) spToPx(customLineSpacing, metrics) else 0f
+
     if (customLineHeight > 0f) {
-      // customLineHeight comes from JS as "points"; convert to px as sp
+      // Like iOS, lineHeight (points, scaled as sp like fontSize) is the exact
+      // distance between baselines: add the difference to the font's own height.
       val desiredLineHeightPx = spToPx(customLineHeight, metrics)
-      val textHeightPx = textSize
-      if (textHeightPx > 0f) {
-        val multiplier = desiredLineHeightPx / textHeightPx
-        val extraSpacing = if (customLineSpacing != 0f) {
-          spToPx(customLineSpacing, metrics)
-        } else {
-          0f
-        }
-        setLineSpacing(extraSpacing, multiplier)
-      }
-    } else if (customLineSpacing != 0f) {
-      val extraSpacing = spToPx(customLineSpacing, metrics)
-      setLineSpacing(extraSpacing, 1.0f)
+      val fmi = paint.fontMetricsInt
+      val fontHeightPx = (fmi.descent - fmi.ascent).toFloat()
+      setLineSpacing(desiredLineHeightPx - fontHeightPx + extraSpacing, 1.0f)
     } else {
-      // Default: add extra spacing equal to vertical padding so backgrounds don't collide
-      val extraSpacing = charPaddingTop + charPaddingBottom
+      // Default: the font's own line height like iOS. Vertical padding of
+      // neighbouring lines overlaps and joins into one shape.
       setLineSpacing(extraSpacing, 1.0f)
     }
   }

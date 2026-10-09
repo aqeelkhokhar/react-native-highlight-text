@@ -157,16 +157,31 @@ Every Android body difference is a 1 px anti-aliasing change on highlight outlin
 
 ---
 
-## Phase 3 — Growth / discoverability (next)
+## Phase 3 — Growth / discoverability (in progress)
 
-- [ ] README rewrite: hero GIF (typing + Instagram-story style), recipes (story text, marker highlight, tag chips), full typed props table
-- [ ] GitHub repo: description, topics, social preview image; align repo name with npm name
+- [x] README rewrite: hero GIF (typing + Instagram-story style), recipes (story text, marker highlight, tag chips), full typed props table (3a)
+- [ ] GitHub repo: description, topics, social preview image (image made in `docs/assets/social-preview.png`, not uploaded); align repo name with npm name
 - [ ] Submit to reactnative.directory (New Arch + Expo badges), awesome-react-native
 - [ ] Blog post (dev.to / Medium): "Instagram story text in React Native"
 - [ ] LinkedIn / X post with demo GIF at 1.0 launch
 - [ ] Answer evergreen Stack Overflow questions (per-line text background in RN)
 - [ ] Demo video / GitHub Pages gallery (Expo Go can't run native code, so no Snack)
-- [ ] Move `WARP.md` out of repo root; keep CHANGELOG via release-it
+- [x] Move `WARP.md` out of repo root (removed, prop guide moved to CONTRIBUTING); keep CHANGELOG via release-it
+
+### Phase 3a — README and showcase (done)
+
+Example app rebuilt as a showcase (Story editor + Recipes screens), demo media in `docs/assets/` (`hero-ios.gif`, `hero-android.gif`, `recipes.png`, `social-preview.png`), README rewritten with recipes and the full API reference.
+
+### Phase 3b — Android rendering parity with iOS (done, 1.1.0)
+
+The 3a recipes screenshot showed Android lagging iOS: a box per word with a seam at every space, nearly square tag chips, markers filling most of the line. Root causes and fixes (Android only, iOS untouched):
+
+- **Units:** `padding*`, `highlightBorderRadius`, `backgroundInset*` (and the view padding derived from the padding) were applied as raw pixels; iOS uses points. They are now converted with the display density (dp), so on a 420 dpi phone they are 2.625x larger than before and equal to iOS.
+- **Gaps at spaces:** a consequence of the units (padding too small to cover a space) plus per-character corner logic. Character rects use the iOS geometry (glyph advance and line box, shrunk by the insets, expanded by the padding, spaces/newlines skipped), and characters whose padded rects touch or overlap are merged into one run per line, drawn as one rounded rect. Runs separated by a real gap are fully rounded, like iOS.
+- **Line box / `lineHeight`:** the background now starts from the line box like iOS (custom `lineHeight`, otherwise the font height), anchored on the descent. `lineHeight` is the exact baseline distance (it was multiplied by the font's height ratio, about 17% too tall). Without `lineHeight` no extra spacing is added (it used to add the vertical padding), so lines overlap like iOS. `lineHeight` stays in sp like `fontSize` (equal to dp at the default font scale).
+- **iOS oddities, reported not fixed:** iOS draws each character as its own fully rounded rect, so large radii show slightly scalloped top/bottom edges (tag chips, `Bold rounded`, insets left/right). Android draws runs and has clean edges. iOS also sets a negative `lineSpacing` for tight `lineHeight`, which TextKit ignores.
+
+Regression (Release, Android 17 emu, `android-3a` vs `android-3b`): the 96-step flow passes before and after. Every screen differs only by the intended highlight changes (continuous per-line runs, dp padding/radius/insets, exact `lineHeight` in S5, text shifted by the dp view padding); controls, events and status lines are unchanged. Showcase Recipes and Story now look equivalent on iOS and Android (fonts differ). `hero-android.gif` and the Android half of `recipes.png` re-recorded with the fixed build.
 
 ---
 
