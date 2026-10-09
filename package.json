@@ -1,6 +1,6 @@
 {
   "name": "react-native-highlight-text-view",
-  "version": "0.1.33",
+  "version": "1.0.0",
   "description": "Instagram/TikTok-style highlighted text input for React Native — rounded per-character backgrounds, editable, New Architecture (Fabric) and Expo dev build ready",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
@@ -137,13 +137,15 @@
       "publish": true
     },
     "github": {
-      "release": true
+      "release": true,
+      "releaseNotes": "awk '/^## /{p=0} /^## ${version}( |$)/{p=1;next} p' CHANGELOG.md"
     },
     "plugins": {
       "@release-it/conventional-changelog": {
         "preset": {
           "name": "angular"
-        }
+        },
+        "infile": false
       }
     }
   },

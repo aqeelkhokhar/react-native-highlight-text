@@ -32,6 +32,8 @@ This package contains native code, so it works in Expo **development builds** an
 | iOS                                     | ✅                         |
 | Android (minSdk 24)                     | ✅                         |
 
+Upgrading from 0.1.x? Read the [1.0.0 upgrade notes](CHANGELOG.md#upgrade-notes): a few defaults changed (for example the iOS default `textAlign` is now `left`).
+
 ## Usage
 
 ```tsx
