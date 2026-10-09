@@ -1,8 +1,23 @@
 # Changelog
 
-## 1.0.1 (unreleased)
+## 1.1.0 (unreleased)
 
-- Docs: new README with demo GIFs, recipes and full API reference; example app showcase.
+Android highlights now look the same as on iOS for the same props.
+
+### Upgrade notes
+
+- **Android visuals change to match iOS.** Highlights are larger and rounder than before for the same props (padding, corner radius and insets were read as pixels, now as points like on iOS), a line's highlight is one continuous shape instead of one box per word, and lines without `lineHeight` sit closer together. Re-check screens that were tuned for the old Android look; values tuned on iOS now give the same result on Android.
+
+### Fixed
+
+- **Android:** a line's highlight is continuous across spaces, as on iOS. Neighbouring characters whose padding covers the space between them now form one rounded shape, instead of separate boxes per word with a seam at each space.
+- **Android:** `padding*`, `highlightBorderRadius` and `backgroundInset*` use the same units as iOS (points, i.e. dp). They were applied as raw pixels, so on a typical phone the padding, corner radius and insets were about a third of their iOS size (nearly square tag chips, markers filling most of the line).
+- **Android:** `lineHeight` is now the exact distance between lines, as on iOS. It used to be scaled by the font's height (about 17% too tall), and the background now starts from the line box like on iOS, so `backgroundInsetTop`/`Bottom` shrink it the same way.
+- **Android:** without `lineHeight`, lines use the font's own line height, as on iOS, instead of adding the vertical padding as extra line spacing. Vertical padding of neighbouring lines overlaps and joins into one shape.
+
+### Docs
+
+- New README with demo GIFs, recipes and full API reference; example app showcase (story editor and recipes).
 
 ## 1.0.0 (2026-10-09)
 
