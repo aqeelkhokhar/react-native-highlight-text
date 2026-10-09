@@ -157,13 +157,14 @@ Every Android body difference is a 1 px anti-aliasing change on highlight outlin
 
 ---
 
-## Phase 3 — Growth / discoverability (in progress)
+## Phase 3 — Growth / discoverability (in progress, 1.1.0 released 2026-10-09)
 
 - [x] README rewrite: hero GIF (typing + Instagram-story style), recipes (story text, marker highlight, tag chips), full typed props table (3a)
-- [ ] GitHub repo: description, topics, social preview image (image made in `docs/assets/social-preview.png`, not uploaded); align repo name with npm name
-- [ ] Submit to reactnative.directory (New Arch + Expo badges), awesome-react-native
-- [ ] Blog post (dev.to / Medium): "Instagram story text in React Native"
-- [ ] LinkedIn / X post with demo GIF at 1.0 launch
+- [x] GitHub repo: description, homepage (npm) and 20 topics set; releases v1.0.0 and v1.1.0 published
+- [ ] Upload social preview image (`docs/assets/social-preview.png`, manual: Settings > General > Social preview); align repo name with npm name
+- [x] Submitted to reactnative.directory (react-native-community/directory#2881) and awesome-react-native (jondot/awesome-react-native#1265), awaiting review
+- [~] Blog post (dev.to / Medium): "Instagram story text in React Native" (draft written, not published)
+- [~] LinkedIn post for 1.1.0 (image and text drafted, to be posted by the author)
 - [ ] Answer evergreen Stack Overflow questions (per-line text background in RN)
 - [ ] Demo video / GitHub Pages gallery (Expo Go can't run native code, so no Snack)
 - [x] Move `WARP.md` out of repo root (removed, prop guide moved to CONTRIBUTING); keep CHANGELOG via release-it
@@ -190,4 +191,5 @@ Regression (Release, Android 17 emu, `android-3a` vs `android-3b`): the 96-step 
 1. `yarn lint && yarn typecheck && yarn test && yarn prepare`
 2. Build example iOS + Android (CLI) and Expo dev build
 3. `yarn release` (release-it: version, tag, npm publish, GitHub release). For 1.0.0 the version is already set, so run `yarn release --no-increment`.
-4. CHANGELOG.md is hand-written: the conventional-changelog plugin has `infile: false` (it only recommends the version), and the GitHub release body is the matching `## <version>` section of CHANGELOG.md (`github.releaseNotes`). Change `## 1.0.0 (unreleased)` to the release date before releasing.
+4. CHANGELOG.md is hand-written: the conventional-changelog plugin has `infile: false` (it only recommends the version), and the GitHub release body is the matching `## <version>` section of CHANGELOG.md (`github.releaseNotes`). Change `## <version> (unreleased)` to the release date before releasing.
+5. npm publish needs the owner's OTP; package owner is aqeel-ahmad-khokhar only.
