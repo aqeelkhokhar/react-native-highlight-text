@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.0 (unreleased)
+## 1.1.0 (2026-10-09)
 
 Android highlights now look the same as on iOS for the same props.
 
