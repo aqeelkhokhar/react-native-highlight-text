@@ -83,11 +83,12 @@ Also found: `main` (RN 0.81.1) **does not build on Xcode 26** from source (`fmt`
 
 Goal: an API that feels like a normal React Native component, plus the TextInput features people expect.
 
-- [ ] JS wrapper component: accept `number | string` for all numeric props and `ColorValue` for colors; convert to strings for native (non-breaking — string props keep working)
-- [ ] Events: `onFocus`, `onBlur`, `onSubmitEditing`, `onSelectionChange`
-- [ ] Props: `placeholder`, `placeholderTextColor`, `maxLength`, `autoCapitalize`, `keyboardType`, `returnKeyType`, `editable` alias for `isEditable`
-- [ ] Ref commands: `focus()`, `blur()`, `clear()`, `setText()` (codegen `codegenNativeCommands`)
-- [ ] Fix the "`key={fontFamily}` required" workaround natively (re-measure on font change)
+- [x] JS wrapper component: accept `number | string` for all numeric props and `ColorValue` for colors; convert to strings for native (non-breaking — string props keep working) (Phase 2b)
+- [x] Events: `onFocus`, `onBlur`, `onSubmitEditing`, `onSelectionChange` (Phase 2b)
+- [x] Props: `placeholder`, `placeholderTextColor`, `maxLength`, `autoCapitalize`, `keyboardType`, `returnKeyType`, `editable` alias for `isEditable`
+- [x] Ref commands: `focus()`, `blur()`, `clear()`, `setText()` (codegen `codegenNativeCommands`; native name `setTextValue`)
+- [x] Fix the "`key={fontFamily}` required" workaround natively (re-measure on font change)
+- [x] iOS: `verticalAlign="center"` renders at the top (Android centers) (Phase 2b)
 - [x] **iOS state bugs (pre-existing, found in regression check):** (Phase 2a: `+shouldBeRecycled NO`, `isEditable` is `WithDefault<boolean, true>`, iOS default `textAlign` is left) `updateProps` only applies props that differ from the previous props, so
   - Fabric view recycling leaks native state between views (e.g. `highlightBorderRadius`/padding of a previous screen appears on a new view) — fix with `+shouldBeRecycled NO` or a full reset in `prepareForRecycle`
   - `isEditable={false}` is ignored on a freshly mounted view (codegen default `false`, native default `YES`) — only works on recycled views today
@@ -96,8 +97,8 @@ Goal: an API that feels like a normal React Native component, plus the TextInput
 - [x] Android vertical alignment parity with iOS (verified: top/center/bottom already work on Android; README "iOS only" note removed)
 - [x] Android: remove seams between words in highlight background (all rects filled as one path)
 - [x] Android: replace deprecated `DisplayMetrics.scaledDensity` with `TypedValue.applyDimension(COMPLEX_UNIT_SP, …)`
-- [ ] iOS perf: cache per-character sizes / use glyph bounding rects instead of `sizeWithAttributes` per draw
-- [ ] Tests: Jest for prop conversion; Maestro flows on example (type → onChange, focus/blur)
+- [x] iOS perf: cache per-character sizes / use glyph bounding rects instead of `sizeWithAttributes` per draw (Phase 2b: memoized per font + character, same values so the drawing is identical)
+- [x] Tests: Jest for prop conversion; Maestro flows on example (type → onChange, focus/blur)
 - [ ] Release `1.0.0` with CHANGELOG (started: `CHANGELOG.md`, Unreleased section)
 
 ### Phase 2a verification (2026-10-08)
@@ -112,6 +113,19 @@ Native correctness fixes only (no new API). Same e2e harness, Release builds of 
 | S8 autoFocus      | default padding/radius (before: S7's padding 8 / radius 6 leaked via recycling)                  | Gboard suggestion strip only                                    |
 
 Not fixed here (pre-existing, out of scope): on iOS `verticalAlign="center"` renders at the top (same as omitting it), Android centers it; iOS still draws per-character rounded rects (visible bumps with large padding), Android merges them.
+
+### Phase 2b verification (2026-10-09)
+
+Developer-facing API (JS wrapper with number/color conversion, `editable` alias, placeholder, `maxLength`, `autoCapitalize`, `keyboardType`, `returnKeyType`, focus/blur/submit/selection events, ref methods), the native font re-measure, the iOS `verticalAlign="center"` fix and the iOS per-character size cache. Same harness, Release builds of `feat/phase-2` before (`e2e/shots/*-2a`) and after (`*-2b`), plus a new S9 `api` scenario after the original 8 (flow now 96 steps). `yarn lint`, `typecheck`, `test` (21 Jest tests) and `prepare` green; Expo example (SDK 57) Android Release build green.
+
+| Screen         | iOS before → after                             | Android before → after                           |
+| -------------- | ---------------------------------------------- | ------------------------------------------------ |
+| S1, S2, S4, S5 | identical                                      | identical                                        |
+| S3 vertical    | `center` box now centered (intended fix)       | identical                                        |
+| S6–S8          | identical                                      | Gboard suggestion strip and cursor blink only    |
+| S9 api (new)   | passes; font change = remount, pixel-identical | passes; font change = remount except `sel=` line |
+
+Still open: with no `verticalAlign` iOS draws at the top and Android centers (documented, kept for 1.0.0); iOS still draws per-character rounded rects. Android: newer React Native already sends `topFocus`/`topBlur` from `BaseViewManager`, so the view only sends its own on versions that do not (avoids double events).
 
 ---
 

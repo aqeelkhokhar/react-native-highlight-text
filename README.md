@@ -34,60 +34,99 @@ This package contains native code, so it works in Expo **development builds** an
 
 ## Usage
 
-```js
-import { useState } from 'react';
-import { HighlightTextView } from 'react-native-highlight-text-view';
+```tsx
+import { useRef, useState } from 'react';
+import {
+  HighlightTextView,
+  type HighlightTextViewRef,
+} from 'react-native-highlight-text-view';
 
 export default function App() {
   const [text, setText] = useState('Hello World');
+  const ref = useRef<HighlightTextViewRef>(null);
 
   return (
     <HighlightTextView
+      ref={ref}
       color="#00A4A3"
-      textColor="#000000"
+      textColor="black"
       textAlign="flex-start"
-      fontSize="32"
-      paddingLeft="8"
-      paddingRight="8"
-      paddingTop="4"
-      paddingBottom="4"
+      fontSize={32}
+      paddingLeft={8}
+      paddingRight={8}
+      paddingTop={4}
+      paddingBottom={4}
+      highlightBorderRadius={6}
+      placeholder="Write something"
       text={text}
-      isEditable={true}
-      onChange={(e) => {
-        setText(e.nativeEvent.text);
-      }}
+      onChange={(e) => setText(e.nativeEvent.text)}
+      returnKeyType="done"
+      onSubmitEditing={() => ref.current?.blur()}
       style={{ width: '100%', height: 200 }}
     />
   );
 }
 ```
 
+Numeric props accept numbers (`fontSize={32}`) or strings (`fontSize="32"`), and colors accept any React Native color string (`"#00A4A3"`, `"rgb(0, 164, 163)"`, `"teal"`). The string-only API of earlier versions keeps working unchanged.
+
 ## Props
 
-| Prop                    | Type                                                 | Default   | Description                                                                                                                                                                                                                  |
-| ----------------------- | ---------------------------------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `color`                 | `string`                                             | `#FFFF00` | Background highlight color (hex format)                                                                                                                                                                                      |
-| `textColor`             | `string`                                             | -         | Text color (hex format)                                                                                                                                                                                                      |
-| `textAlign`             | `string`                                             | `left`    | Text alignment. Supports: `'left'`, `'center'`, `'right'`, `'justify'`, `'flex-start'`, `'flex-end'`, `'top'`, `'bottom'`, `'top-left'`, `'top-center'`, `'top-right'`, `'bottom-left'`, `'bottom-center'`, `'bottom-right'` |
-| `verticalAlign`         | `'top' \| 'center' \| 'middle' \| 'bottom'`          | -         | Vertical alignment. Alternative to using combined `textAlign` values.                                                                                                                                                        |
-| `fontFamily`            | `string`                                             | -         | Font family name                                                                                                                                                                                                             |
-| `fontSize`              | `string`                                             | `32`      | Font size in points                                                                                                                                                                                                          |
-| `letterSpacing`         | `string`                                             | `0`       | Extra space between characters, in layout points (same semantics as React Native's `letterSpacing`).                                                                                                                         |
-| `lineHeight`            | `string`                                             | `0`       | Line height override (0 means use default line height)                                                                                                                                                                       |
-| `highlightBorderRadius` | `string`                                             | `0`       | Border radius for the highlight background                                                                                                                                                                                   |
-| `padding`               | `string`                                             | `4`       | Padding around each character highlight (expands background outward)                                                                                                                                                         |
-| `paddingLeft`           | `string`                                             | -         | Left padding for character highlight                                                                                                                                                                                         |
-| `paddingRight`          | `string`                                             | -         | Right padding for character highlight                                                                                                                                                                                        |
-| `paddingTop`            | `string`                                             | -         | Top padding for character highlight                                                                                                                                                                                          |
-| `paddingBottom`         | `string`                                             | -         | Bottom padding for character highlight                                                                                                                                                                                       |
-| `backgroundInsetTop`    | `string`                                             | `0`       | Shrinks background from top (useful for fonts with large vertical metrics)                                                                                                                                                   |
-| `backgroundInsetBottom` | `string`                                             | `0`       | Shrinks background from bottom (useful for fonts with large vertical metrics)                                                                                                                                                |
-| `backgroundInsetLeft`   | `string`                                             | `0`       | Shrinks background from left                                                                                                                                                                                                 |
-| `backgroundInsetRight`  | `string`                                             | `0`       | Shrinks background from right                                                                                                                                                                                                |
-| `text`                  | `string`                                             | -         | Controlled text value                                                                                                                                                                                                        |
-| `isEditable`            | `boolean`                                            | `true`    | Whether the text is editable                                                                                                                                                                                                 |
-| `autoFocus`             | `boolean`                                            | `false`   | If true, automatically focuses the text input and opens the keyboard when component mounts (only works when `isEditable` is `true`)                                                                                          |
-| `onChange`              | `(event: { nativeEvent: { text: string } }) => void` | -         | Callback fired when text changes                                                                                                                                                                                             |
+All props of `View` are supported too. `Numeric` means `number | string`.
+
+| Prop                    | Type                                                                                                                                                                       | Default          | Description                                                                                                                                                                                        |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `text`                  | `string`                                                                                                                                                                   | -                | Controlled text value                                                                                                                                                                              |
+| `color`                 | `ColorValue`                                                                                                                                                               | `#FFFF00`        | Highlight background color. Hex, `rgb()`/`rgba()`, `hsl()` or a named color (`PlatformColor` is not supported)                                                                                     |
+| `textColor`             | `ColorValue`                                                                                                                                                               | -                | Text color                                                                                                                                                                                         |
+| `textAlign`             | `TextAlignment`                                                                                                                                                            | `left`           | `'left'`, `'center'`, `'right'`, `'justify'`, `'flex-start'`, `'flex-end'`, `'top'`, `'bottom'`, `'top-left'`, `'top-center'`, `'top-right'`, `'bottom-left'`, `'bottom-center'`, `'bottom-right'` |
+| `verticalAlign`         | `'top' \| 'center' \| 'middle' \| 'bottom'`                                                                                                                                | -                | Vertical alignment. Alternative to the combined `textAlign` values. When omitted, iOS draws at the top and Android centers                                                                         |
+| `fontFamily`            | `string`                                                                                                                                                                   | -                | Font family name. Can be changed at runtime (no `key` needed)                                                                                                                                      |
+| `fontSize`              | `Numeric`                                                                                                                                                                  | `32`             | Font size in points                                                                                                                                                                                |
+| `fontWeight`            | `'normal' \| 'bold' \| '100'` … `'900'`                                                                                                                                    | `normal`         | Font weight                                                                                                                                                                                        |
+| `letterSpacing`         | `Numeric`                                                                                                                                                                  | `0`              | Extra space between characters, in layout points (same semantics as React Native's `letterSpacing`)                                                                                                |
+| `lineHeight`            | `Numeric`                                                                                                                                                                  | `0`              | Line height override (0 means use default line height)                                                                                                                                             |
+| `lineSpacing`           | `Numeric`                                                                                                                                                                  | `0`              | Extra space between lines (Android)                                                                                                                                                                |
+| `highlightBorderRadius` | `Numeric`                                                                                                                                                                  | `0`              | Border radius for the highlight background                                                                                                                                                         |
+| `padding`               | `Numeric`                                                                                                                                                                  | `4`              | Padding around each character highlight (expands background outward)                                                                                                                               |
+| `paddingLeft`           | `Numeric`                                                                                                                                                                  | -                | Left padding for character highlight                                                                                                                                                               |
+| `paddingRight`          | `Numeric`                                                                                                                                                                  | -                | Right padding for character highlight                                                                                                                                                              |
+| `paddingTop`            | `Numeric`                                                                                                                                                                  | -                | Top padding for character highlight                                                                                                                                                                |
+| `paddingBottom`         | `Numeric`                                                                                                                                                                  | -                | Bottom padding for character highlight                                                                                                                                                             |
+| `backgroundInsetTop`    | `Numeric`                                                                                                                                                                  | `0`              | Shrinks background from top (useful for fonts with large vertical metrics)                                                                                                                         |
+| `backgroundInsetBottom` | `Numeric`                                                                                                                                                                  | `0`              | Shrinks background from bottom (useful for fonts with large vertical metrics)                                                                                                                      |
+| `backgroundInsetLeft`   | `Numeric`                                                                                                                                                                  | `0`              | Shrinks background from left                                                                                                                                                                       |
+| `backgroundInsetRight`  | `Numeric`                                                                                                                                                                  | `0`              | Shrinks background from right                                                                                                                                                                      |
+| `editable`              | `boolean`                                                                                                                                                                  | `true`           | Whether the text can be edited. Same as `isEditable`; `editable` wins if both are given                                                                                                            |
+| `isEditable`            | `boolean`                                                                                                                                                                  | `true`           | Original name of `editable`, still supported                                                                                                                                                       |
+| `autoFocus`             | `boolean`                                                                                                                                                                  | `false`          | Focuses the input and opens the keyboard on mount (editable views only)                                                                                                                            |
+| `placeholder`           | `string`                                                                                                                                                                   | -                | Text shown while the input is empty                                                                                                                                                                |
+| `placeholderTextColor`  | `ColorValue`                                                                                                                                                               | platform default | Placeholder color                                                                                                                                                                                  |
+| `maxLength`             | `number`                                                                                                                                                                   | no limit         | Maximum number of characters the user can type (text set through `text` or `setText()` is not cut)                                                                                                 |
+| `autoCapitalize`        | `'none' \| 'sentences' \| 'words' \| 'characters'`                                                                                                                         | platform default | Automatic capitalization while typing                                                                                                                                                              |
+| `keyboardType`          | `'default' \| 'email-address' \| 'numeric' \| 'phone-pad' \| 'number-pad' \| 'decimal-pad' \| 'url' \| 'ascii-capable' \| 'numbers-and-punctuation' \| 'visible-password'` | `default`        | Keyboard to show                                                                                                                                                                                   |
+| `returnKeyType`         | `'default' \| 'done' \| 'go' \| 'next' \| 'search' \| 'send' \| 'previous' \| 'join' \| 'route' \| 'none'`                                                                 | `default`        | Label of the Return key. Any value other than `'default'` makes Return fire `onSubmitEditing` instead of inserting a new line                                                                      |
+
+## Events
+
+| Event               | Payload (`event.nativeEvent`)                   | Fired when                                                                         |
+| ------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `onChange`          | `{ text: string }`                              | The text changes (typing, `clear()`, `setText()`)                                  |
+| `onFocus`           | `{ target: number }`                            | The input gains focus                                                              |
+| `onBlur`            | `{ target: number }`                            | The input loses focus                                                              |
+| `onSubmitEditing`   | `{ text: string }`                              | Return is pressed while `returnKeyType` is set to something other than `'default'` |
+| `onSelectionChange` | `{ selection: { start: number; end: number } }` | The cursor moves or the selection changes                                          |
+
+## Methods (ref)
+
+Pass a `ref` (`useRef<HighlightTextViewRef>(null)`) to call:
+
+| Method          | Description                                               |
+| --------------- | --------------------------------------------------------- |
+| `focus()`       | Focuses the input and opens the keyboard (editable views) |
+| `blur()`        | Removes focus and closes the keyboard                     |
+| `clear()`       | Clears the text and fires `onChange` with `''`            |
+| `setText(text)` | Replaces the text and fires `onChange` with the new text  |
 
 ### Understanding Padding vs Background Insets
 
@@ -101,13 +140,13 @@ export default function App() {
 ```jsx
 <HighlightTextView
   fontFamily="Eczar"
-  fontSize="32"
-  paddingLeft="8"
-  paddingRight="8"
-  paddingTop="4"
-  paddingBottom="4"
-  backgroundInsetTop="6"
-  backgroundInsetBottom="6"
+  fontSize={32}
+  paddingLeft={8}
+  paddingRight={8}
+  paddingTop={4}
+  paddingBottom={4}
+  backgroundInsetTop={6}
+  backgroundInsetBottom={6}
   text="Tight Background"
 />
 ```
@@ -117,15 +156,15 @@ To make backgrounds touch vertically across multiple lines, combine `lineHeight`
 
 ```jsx
 <HighlightTextView
-  fontSize="32"
-  lineHeight="36" // Slightly larger than fontSize for tight spacing
-  paddingLeft="8"
-  paddingRight="8"
-  paddingTop="4"
-  paddingBottom="4"
-  backgroundInsetTop="14" // Large inset reduces background height
-  backgroundInsetBottom="14" // Creates room for lines to touch
-  highlightBorderRadius="4"
+  fontSize={32}
+  lineHeight={36} // Slightly larger than fontSize for tight spacing
+  paddingLeft={8}
+  paddingRight={8}
+  paddingTop={4}
+  paddingBottom={4}
+  backgroundInsetTop={14} // Large inset reduces background height
+  backgroundInsetBottom={14} // Creates room for lines to touch
+  highlightBorderRadius={4}
   text="Multiple lines with touching backgrounds create smooth vertical flow"
 />
 ```
@@ -140,9 +179,8 @@ To automatically open the keyboard when the component mounts, use the `autoFocus
 <HighlightTextView
   color="#00A4A3"
   textColor="#FFFFFF"
-  fontSize="20"
+  fontSize={20}
   text={text}
-  isEditable={true}
   autoFocus={true} // Keyboard opens automatically
   onChange={(e) => setText(e.nativeEvent.text)}
   style={{ width: '100%', height: 100 }}
@@ -151,45 +189,9 @@ To automatically open the keyboard when the component mounts, use the `autoFocus
 
 This eliminates the need for double-tapping to open the keyboard - it will open on first render.
 
-### Dynamic Font Family Changes
+### Changing the font at runtime
 
-**IMPORTANT**: When changing `fontFamily` dynamically at runtime (especially to fonts with different ascender/descender values like Eczar, Georgia, etc.), you must use the `key` prop to force React to remount the component. This ensures the native layout recalculates with the new font metrics.
-
-**Why this is needed**: Fonts like Eczar have significantly larger vertical metrics than system fonts. Without remounting, the highlight background may appear cut off at the bottom or lose corner radius.
-
-**Solution**: Pass the `fontFamily` as the `key` prop:
-
-```jsx
-const [fontFamily, setFontFamily] = useState('system');
-
-return (
-  <HighlightTextView
-    key={fontFamily}
-    fontFamily={fontFamily}
-    fontSize="32"
-    color="#00A4A3"
-    textColor="#FFFFFF"
-    paddingLeft="8"
-    paddingRight="8"
-    paddingTop="4"
-    paddingBottom="4"
-    backgroundInsetTop="6"
-    backgroundInsetBottom="6"
-    highlightBorderRadius="8"
-    text="Beautiful Eczar Font"
-    style={{ width: '100%', height: 150 }}
-  />
-);
-```
-
-**What happens**:
-
-- Font changes → `key` changes → React unmounts old component and mounts new one
-- New mount → Native component calculates fresh layout with correct font metrics
-- Perfect rendering → Background highlights render correctly without cutting
-
-**Without key prop**: Background may cut off, corner radius may disappear  
-**With key prop**: Perfect rendering every time ✅
+`fontFamily`, `fontSize` and `fontWeight` can be changed at any time; the view re-measures and redraws the highlight with the new font metrics. The `key={fontFamily}` workaround needed by versions before 1.0 is no longer required (it still works, it just remounts the view).
 
 ## Contributing
 

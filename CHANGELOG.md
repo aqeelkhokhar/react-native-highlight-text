@@ -2,7 +2,20 @@
 
 ## Unreleased
 
+### Added
+
+- `HighlightTextView` is now a JS wrapper around the native component. Numeric props (`fontSize`, `padding*`, `lineHeight`, `lineSpacing`, `letterSpacing`, `highlightBorderRadius`, `backgroundInset*`) accept numbers as well as strings (`fontSize={32}`), and `color`, `textColor` and `placeholderTextColor` accept any React Native color string (`rgb()`, `rgba()`, `hsl()`, named colors, short hex). `PlatformColor`/`DynamicColorIOS` are not supported.
+- Events: `onFocus`, `onBlur` (`{ target }`, like `TextInput`), `onSubmitEditing` (`{ text }`) and `onSelectionChange` (`{ selection: { start, end } }`) on iOS and Android.
+- Props: `placeholder`, `placeholderTextColor`, `maxLength`, `autoCapitalize`, `keyboardType`, `returnKeyType`, and `editable` as an alias of `isEditable` (`editable` wins when both are given). Setting `returnKeyType` to anything other than `'default'` makes Return fire `onSubmitEditing` instead of inserting a new line.
+- Ref methods: `focus()`, `blur()`, `clear()` and `setText(text)` (native commands). `clear()` and `setText()` fire `onChange` so a controlled `text` follows them.
+- Typed props: `textAlign`, `verticalAlign`, `fontWeight`, `keyboardType` and `returnKeyType` are typed as unions (any string is still accepted). New exported types: `HighlightTextViewRef`, `NumericProp`, `VerticalAlignment`, `AutoCapitalize`, `KeyboardType`, `ReturnKeyType`, the event payload types and `HighlightTextViewNativeProps`.
+
 ### Fixed
+
+- Changing `fontFamily`, `fontSize` or `fontWeight` at runtime now re-measures and redraws the highlight (and re-applies vertical alignment). The `key={fontFamily}` remount workaround is no longer needed.
+- **iOS:** `verticalAlign="center"` / `"middle"` now centers the text vertically, as on Android. It used to render at the top.
+- **iOS:** 8-digit hex colors are read as `#AARRGGBB` (alpha included), the same as Android. They used to be drawn opaque.
+- **iOS:** the highlight drawing caches per-character glyph sizes instead of measuring every character on every draw pass (same output, less work while typing).
 
 - **iOS:** views are no longer recycled by Fabric. Native state (padding, insets, corner radius, fonts, alignment, colors) used to leak from a previously unmounted `HighlightTextView` into a new one, so a view could render with another view's padding or radius.
 - **iOS:** `isEditable={false}` is now honoured on a freshly mounted view. Before, it only took effect after the prop changed, so a new read-only view could still be edited.
@@ -13,8 +26,11 @@
 
 ### Changed
 
+- Color strings that are not `#RRGGBB`/`#AARRGGBB` (named colors, `rgb()`, short hex) are converted in JS with React Native's color parser. They used to be ignored on iOS, and a few Android named colors differ from CSS (for example `green`, `gray`, `lightgray`), so those now render with the CSS/React Native value on both platforms. `#RRGGBB` and `#AARRGGBB` strings are passed to native unchanged.
+- **Android 14+:** with a large accessibility font scale, `lineHeight`, `lineSpacing` and `letterSpacing` now follow the system's non-linear text scaling (like `fontSize` already did), because they are converted with `TypedValue.applyDimension(COMPLEX_UNIT_SP, …)`. At the default font scale nothing changes.
 - `isEditable` is now declared with a codegen default of `true` (`WithDefault<boolean, true>`), matching the documented default on both platforms. Omitting the prop keeps the view editable, as before.
 
 ### Docs
 
+- README: props table with real types, the new props, events and ref methods, a usage example with numbers (`fontSize={32}`), and a note that with no `verticalAlign` iOS draws at the top while Android centers. The `key={fontFamily}` section is replaced by a short note that it is no longer needed.
 - `verticalAlign` and the combined `textAlign` values (`top-left`, `bottom-center`, …) are no longer documented as iOS only; they already worked on Android.
