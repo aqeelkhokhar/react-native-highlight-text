@@ -67,9 +67,6 @@
     "url": "git+https://github.com/aqeelkhokhar/react-native-highlight-text.git"
   },
   "author": "Aqeel Ahmad Khokhar <aqeelahmadkhokhar99@gmail.com> (https://portfolio-aqeel-ahmads-projects-6ef4879c.vercel.app/)",
-  "contributors": [
-    "Muhammad Saqib Aziz <saqib.aziz1000@gmail.com>"
-  ],
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/aqeelkhokhar/react-native-highlight-text/issues"
