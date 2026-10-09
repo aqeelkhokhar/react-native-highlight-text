@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.1 (2026-10-09)
+
+### Docs
+
+- README rewritten for clarity (compatibility, FAQ, quick start); package description and keywords updated. No code changes.
+- README: the documented `highlightBorderRadius` default is now `4`, which is what iOS and Android already use when the prop is unset or `0` (it was listed as `0`).
+
 ## 1.1.0 (2026-10-09)
 
 Android highlights now look the same as on iOS for the same props.

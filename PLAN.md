@@ -168,6 +168,7 @@ Every Android body difference is a 1 px anti-aliasing change on highlight outlin
 - [ ] Answer evergreen Stack Overflow questions (per-line text background in RN)
 - [ ] Demo video / GitHub Pages gallery (Expo Go can't run native code, so no Snack)
 - [x] Move `WARP.md` out of repo root (removed, prop guide moved to CONTRIBUTING); keep CHANGELOG via release-it
+- [x] README polish for 1.1.1 (unreleased): above-the-fold install + usage, "Why this library", "When to use it", compatibility reworded (New Architecture default since RN 0.76, always on from RN 0.82; Expo dev builds), FAQ, absolute links for npm, dev.to article linked, documented `highlightBorderRadius` default corrected to 4 (matches native); package `description` and `keywords` refreshed
 
 ### Phase 3a — README and showcase (done)
 
