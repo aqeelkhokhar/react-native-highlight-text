@@ -2,8 +2,9 @@ package com.highlighttext
 
 import android.graphics.Color
 import android.graphics.Typeface
-import android.text.InputType
 import android.view.Gravity
+import com.facebook.react.bridge.Arguments
+import com.facebook.react.bridge.WritableMap
 import com.facebook.react.module.annotations.ReactModule
 import com.facebook.react.uimanager.SimpleViewManager
 import com.facebook.react.uimanager.ThemedReactContext
@@ -39,7 +40,56 @@ class HighlightTextViewManager : SimpleViewManager<HighlightTextView>(),
       UIManagerHelper.getEventDispatcherForReactTag(context, view.id)
         ?.dispatchEvent(OnChangeEvent(surfaceId, view.id, text))
     }
+    view.focusEventListener = { focused ->
+      // Newer React Native versions already send topFocus/topBlur ({ target }) for every view
+      // from BaseViewManager; only send our own on versions that do not.
+      if (!hasBuiltInFocusEvents(view)) dispatch(context, view, if (focused) HighlightTextEvent.FOCUS else HighlightTextEvent.BLUR) {
+        putInt("target", view.id)
+      }
+    }
+    view.onSubmitEditingListener = { text ->
+      dispatch(context, view, HighlightTextEvent.SUBMIT_EDITING) { putString("text", text) }
+    }
+    view.onSelectionChangeListener = { start, end ->
+      dispatch(context, view, HighlightTextEvent.SELECTION_CHANGE) {
+        putMap("selection", Arguments.createMap().apply {
+          putInt("start", start)
+          putInt("end", end)
+        })
+      }
+    }
     return view
+  }
+
+  private fun dispatch(
+    context: ThemedReactContext,
+    view: HighlightTextView,
+    eventName: String,
+    data: WritableMap.() -> Unit
+  ) {
+    val surfaceId = UIManagerHelper.getSurfaceId(context)
+    UIManagerHelper.getEventDispatcherForReactTag(context, view.id)
+      ?.dispatchEvent(HighlightTextEvent(surfaceId, view.id, eventName, Arguments.createMap().apply(data)))
+  }
+
+  private fun hasBuiltInFocusEvents(view: HighlightTextView): Boolean =
+    view.onFocusChangeListener?.javaClass?.name?.contains("BaseVMFocusChangeListener") == true
+
+  override fun getExportedCustomDirectEventTypeConstants(): MutableMap<String, Any> {
+    val constants = super.getExportedCustomDirectEventTypeConstants() ?: mutableMapOf()
+    val events = mutableListOf(
+      HighlightTextEvent.SUBMIT_EDITING to "onSubmitEditing",
+      HighlightTextEvent.SELECTION_CHANGE to "onSelectionChange"
+    )
+    // Newer React Native registers topFocus/topBlur for all views already
+    if (super.getExportedCustomBubblingEventTypeConstants()?.containsKey(HighlightTextEvent.FOCUS) != true) {
+      events += HighlightTextEvent.FOCUS to "onFocus"
+      events += HighlightTextEvent.BLUR to "onBlur"
+    }
+    for ((eventName, registrationName) in events) {
+      constants[eventName] = mapOf("registrationName" to registrationName)
+    }
+    return constants
   }
 
   @ReactProp(name = "color")
@@ -225,26 +275,67 @@ class HighlightTextViewManager : SimpleViewManager<HighlightTextView>(),
     view?.setTextProp(value ?: "")
   }
 
-  @ReactProp(name = "isEditable")
+  @ReactProp(name = "isEditable", defaultBoolean = true)
   override fun setIsEditable(view: HighlightTextView?, value: Boolean) {
-    view?.apply {
-      isFocusable = value
-      isFocusableInTouchMode = value
-      isEnabled = value
-      // Always keep multiline flag to preserve newlines, even when not editable
-      inputType = if (value) {
-        InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
-      } else {
-        InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
-      }
-      // Prevent keyboard from showing when not editable (and restore it when editable again)
-      setShowSoftInputOnFocus(value)
-    }
+    view?.setEditableProp(value)
   }
 
   @ReactProp(name = "autoFocus")
   override fun setAutoFocus(view: HighlightTextView?, value: Boolean) {
     view?.setAutoFocus(value)
+  }
+
+  @ReactProp(name = "placeholder")
+  override fun setPlaceholder(view: HighlightTextView?, value: String?) {
+    view?.setPlaceholderProp(value)
+  }
+
+  @ReactProp(name = "placeholderTextColor")
+  override fun setPlaceholderTextColor(view: HighlightTextView?, value: String?) {
+    val color = if (value.isNullOrEmpty()) null else try {
+      Color.parseColor(value)
+    } catch (e: IllegalArgumentException) {
+      null
+    }
+    view?.setPlaceholderTextColorProp(color)
+  }
+
+  @ReactProp(name = "maxLength", defaultInt = -1)
+  override fun setMaxLength(view: HighlightTextView?, value: Int) {
+    view?.setMaxLengthProp(value)
+  }
+
+  @ReactProp(name = "autoCapitalize")
+  override fun setAutoCapitalize(view: HighlightTextView?, value: String?) {
+    view?.setAutoCapitalizeProp(value)
+  }
+
+  @ReactProp(name = "keyboardType")
+  override fun setKeyboardType(view: HighlightTextView?, value: String?) {
+    view?.setKeyboardTypeProp(value)
+  }
+
+  @ReactProp(name = "returnKeyType")
+  override fun setReturnKeyType(view: HighlightTextView?, value: String?) {
+    view?.setReturnKeyTypeProp(value)
+  }
+
+  // --- Commands (codegenNativeCommands) ----------------------------------------
+
+  override fun focus(view: HighlightTextView?) {
+    view?.focusFromJs()
+  }
+
+  override fun blur(view: HighlightTextView?) {
+    view?.blurFromJs()
+  }
+
+  override fun clear(view: HighlightTextView?) {
+    view?.setTextFromJs("")
+  }
+
+  override fun setTextValue(view: HighlightTextView?, text: String?) {
+    view?.setTextFromJs(text ?: "")
   }
 
   companion object {

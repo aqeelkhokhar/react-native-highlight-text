@@ -1,4 +1,6 @@
+import type * as React from 'react';
 import {
+  codegenNativeCommands,
   codegenNativeComponent,
   type CodegenTypes,
   type HostComponent,
@@ -7,6 +9,27 @@ import {
 
 export interface OnChangeEventData {
   readonly text: string;
+}
+
+/** Same shape as React Native's `TextInput` focus event: the view's tag. */
+export interface OnFocusEventData {
+  readonly target: CodegenTypes.Int32;
+}
+
+/** Same shape as React Native's `TextInput` blur event: the view's tag. */
+export interface OnBlurEventData {
+  readonly target: CodegenTypes.Int32;
+}
+
+export interface OnSubmitEditingEventData {
+  readonly text: string;
+}
+
+export interface OnSelectionChangeEventData {
+  readonly selection: {
+    readonly start: CodegenTypes.Int32;
+    readonly end: CodegenTypes.Int32;
+  };
 }
 
 /**
@@ -42,7 +65,12 @@ export type TextAlignment =
   | 'bottom-center'
   | 'bottom-right';
 
-export interface HighlightTextViewProps extends ViewProps {
+/**
+ * Props of the native (codegen) component. Numeric values and colors are
+ * strings here; the `HighlightTextView` wrapper converts numbers and any
+ * React Native color into these strings.
+ */
+export interface NativeProps extends ViewProps {
   color?: string;
   textColor?: string;
   textAlign?: string;
@@ -72,9 +100,47 @@ export interface HighlightTextViewProps extends ViewProps {
   /** Defaults to true (native default), so omitting it keeps the view editable. */
   isEditable?: CodegenTypes.WithDefault<boolean, true>;
   autoFocus?: boolean;
+  placeholder?: string;
+  placeholderTextColor?: string;
+  /** -1 (default) means no limit. */
+  maxLength?: CodegenTypes.WithDefault<CodegenTypes.Int32, -1>;
+  /** Empty string (default) keeps the platform default. */
+  autoCapitalize?: string;
+  /** Empty string (default) keeps the platform default. */
+  keyboardType?: string;
+  /** Empty string (default) keeps the platform default (Return inserts a new line). */
+  returnKeyType?: string;
   onChange?: CodegenTypes.BubblingEventHandler<OnChangeEventData>;
+  onFocus?: CodegenTypes.DirectEventHandler<OnFocusEventData>;
+  onBlur?: CodegenTypes.DirectEventHandler<OnBlurEventData>;
+  onSubmitEditing?: CodegenTypes.DirectEventHandler<OnSubmitEditingEventData>;
+  onSelectionChange?: CodegenTypes.DirectEventHandler<OnSelectionChangeEventData>;
 }
 
-export default codegenNativeComponent<HighlightTextViewProps>(
+export type HighlightTextViewNativeComponentType = HostComponent<NativeProps>;
+
+interface NativeCommands {
+  focus: (
+    viewRef: React.ElementRef<HighlightTextViewNativeComponentType>
+  ) => void;
+  blur: (
+    viewRef: React.ElementRef<HighlightTextViewNativeComponentType>
+  ) => void;
+  clear: (
+    viewRef: React.ElementRef<HighlightTextViewNativeComponentType>
+  ) => void;
+  // Named setTextValue (not setText) so the generated Android interface does not
+  // clash with the `text` prop setter.
+  setTextValue: (
+    viewRef: React.ElementRef<HighlightTextViewNativeComponentType>,
+    text: string
+  ) => void;
+}
+
+export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
+  supportedCommands: ['focus', 'blur', 'clear', 'setTextValue'],
+});
+
+export default codegenNativeComponent<NativeProps>(
   'HighlightTextView'
-) as HostComponent<HighlightTextViewProps>;
+) as HighlightTextViewNativeComponentType;

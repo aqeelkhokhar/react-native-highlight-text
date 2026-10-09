@@ -9,7 +9,13 @@
 
 using namespace facebook::react;
 
-@implementation RoundedBackgroundLayoutManager
+@implementation RoundedBackgroundLayoutManager {
+    // Per-font cache of single-character sizes. sizeWithAttributes: is
+    // deterministic for a given (character, font), so memoizing it returns the
+    // exact same values (pixel-identical drawing) without re-measuring every
+    // character on every draw pass.
+    NSMutableDictionary<UIFont *, NSMutableDictionary<NSString *, NSValue *> *> *_charSizeCache;
+}
 
 @synthesize backgroundColor, padding, paddingLeft, paddingRight, paddingTop, paddingBottom, cornerRadius, highlightBorderRadius, backgroundInsetTop, backgroundInsetBottom, backgroundInsetLeft, backgroundInsetRight;
 
@@ -34,13 +40,12 @@ using namespace facebook::react;
                     }
                     
                     CGPoint glyphLocation = [self locationForGlyphAtIndex:glyphRange.location];
-                    NSUInteger lineIndex = [self lineFragmentRectForGlyphAtIndex:glyphRange.location effectiveRange:NULL].origin.y;
                     CGRect lineRect = [self lineFragmentRectForGlyphAtIndex:glyphRange.location effectiveRange:NULL];
                     
                     NSDictionary *attributes = [textStorage attributesAtIndex:i effectiveRange:NULL];
                     UIFont *font = attributes[NSFontAttributeName];
                     NSString *charString = [textStorage.string substringWithRange:NSMakeRange(i, 1)];
-                    CGSize charSize = [charString sizeWithAttributes:@{NSFontAttributeName: font}];
+                    CGSize charSize = [self cachedSizeOfCharacter:charString font:font];
                     
                     CGRect boundingRect = CGRectMake(
                         glyphLocation.x,
@@ -76,6 +81,32 @@ using namespace facebook::react;
     // Don't call super to avoid default background drawing
 }
 
+- (CGSize)cachedSizeOfCharacter:(NSString *)charString font:(UIFont *)font
+{
+    if (!font) {
+        return [charString sizeWithAttributes:@{}];
+    }
+    if (!_charSizeCache) {
+        _charSizeCache = [NSMutableDictionary new];
+    }
+    NSMutableDictionary<NSString *, NSValue *> *sizes = _charSizeCache[font];
+    if (!sizes) {
+        // Fonts only change on prop updates; keep the cache small.
+        if (_charSizeCache.count >= 8) {
+            [_charSizeCache removeAllObjects];
+        }
+        sizes = [NSMutableDictionary new];
+        _charSizeCache[font] = sizes;
+    }
+    NSValue *cached = sizes[charString];
+    if (cached) {
+        return cached.CGSizeValue;
+    }
+    CGSize size = [charString sizeWithAttributes:@{NSFontAttributeName: font}];
+    sizes[charString] = [NSValue valueWithCGSize:size];
+    return size;
+}
+
 @end
 
 @interface HighlightTextView () <RCTHighlightTextViewViewProtocol, UITextViewDelegate>
@@ -105,6 +136,9 @@ using namespace facebook::react;
     BOOL _isUpdatingText;
     NSString * _currentVerticalAlignment;
     NSTextAlignment _currentHorizontalAlignment;
+    UILabel * _placeholderLabel;
+    NSInteger _maxLength; // -1 = no limit
+    BOOL _submitOnReturn; // returnKeyType set: Return fires onSubmitEditing instead of a new line
 }
 
 + (BOOL)shouldBeRecycled
@@ -146,6 +180,8 @@ using namespace facebook::react;
     _fontWeight = @"normal";
     _currentVerticalAlignment = nil;
     _currentHorizontalAlignment = NSTextAlignmentLeft; // README default: left
+    _maxLength = -1;
+    _submitOnReturn = NO;
     
     // Create text storage, layout manager, and text container
     NSTextStorage *textStorage = [[NSTextStorage alloc] init];
@@ -178,6 +214,14 @@ using namespace facebook::react;
     _textView.scrollEnabled = YES;
     _textView.userInteractionEnabled = YES;
 
+    _placeholderLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    _placeholderLabel.numberOfLines = 0;
+    _placeholderLabel.textColor = [UIColor placeholderTextColor];
+    _placeholderLabel.font = _textView.font;
+    _placeholderLabel.hidden = YES;
+    _placeholderLabel.userInteractionEnabled = NO;
+    [_textView addSubview:_placeholderLabel];
+
     self.contentView = _textView;
     self.userInteractionEnabled = YES;
   }
@@ -193,9 +237,16 @@ using namespace facebook::react;
     if (_currentVerticalAlignment) {
         [self updateVerticalAlignment:_currentVerticalAlignment];
     }
+    [self layoutPlaceholder];
 }
 
 - (void)updateVerticalAlignment:(NSString *)verticalAlign
+{
+    [self applyVerticalAlignment:verticalAlign];
+    [self layoutPlaceholder];
+}
+
+- (void)applyVerticalAlignment:(NSString *)verticalAlign
 {
     if ([verticalAlign isEqualToString:@"top"]) {
         _textView.textContainerInset = UIEdgeInsetsMake(10, 10, 0, 10);
@@ -225,9 +276,56 @@ using namespace facebook::react;
                 });
             }
         }
+    } else if ([verticalAlign isEqualToString:@"center"] || [verticalAlign isEqualToString:@"middle"]) {
+        [_textView.layoutManager ensureLayoutForTextContainer:_textView.textContainer];
+
+        CGFloat contentHeight = [_textView.layoutManager usedRectForTextContainer:_textView.textContainer].size.height;
+        CGFloat viewHeight = _textView.bounds.size.height;
+
+        if (viewHeight > 0 && contentHeight > 0 && contentHeight + 20 <= viewHeight) {
+            // Split the free space evenly above and below the text (min 10, like the other modes)
+            CGFloat freeSpace = viewHeight - contentHeight;
+            CGFloat topInset = MAX(10, floor(freeSpace / 2.0));
+            CGFloat bottomInset = MAX(10, freeSpace - topInset);
+            _textView.textContainerInset = UIEdgeInsetsMake(topInset, 10, bottomInset, 10);
+        } else {
+            _textView.textContainerInset = UIEdgeInsetsMake(10, 10, 10, 10);
+        }
     } else {
-        // Default or center
+        // Default
         _textView.textContainerInset = UIEdgeInsetsMake(10, 10, 10, 10);
+    }
+}
+
+- (void)layoutPlaceholder
+{
+    if (!_placeholderLabel) {
+        return;
+    }
+    BOOL hasPlaceholder = _placeholderLabel.text.length > 0;
+    _placeholderLabel.hidden = !hasPlaceholder || _textView.text.length > 0;
+    if (_placeholderLabel.hidden) {
+        return;
+    }
+    UIEdgeInsets inset = _textView.textContainerInset;
+    CGFloat linePadding = _textView.textContainer.lineFragmentPadding;
+    CGFloat width = MAX(0, _textView.bounds.size.width - inset.left - inset.right - 2 * linePadding);
+    CGSize fitted = [_placeholderLabel sizeThatFits:CGSizeMake(width, CGFLOAT_MAX)];
+    _placeholderLabel.frame = CGRectMake(inset.left + linePadding, inset.top, width, ceil(fitted.height));
+}
+
+- (void)updatePlaceholderStyle
+{
+    _placeholderLabel.font = _textView.font;
+    _placeholderLabel.textAlignment =
+        _currentHorizontalAlignment == NSTextAlignmentJustified ? NSTextAlignmentLeft : _currentHorizontalAlignment;
+    [self layoutPlaceholder];
+}
+
+- (void)reloadKeyboardIfNeeded
+{
+    if (_textView.isFirstResponder) {
+        [_textView reloadInputViews];
     }
 }
 
@@ -300,6 +398,7 @@ using namespace facebook::react;
         }
         
         [self applyCharacterBackgrounds]; // Reapply to update alignment
+        [self updatePlaceholderStyle];
     }
     
     if (oldViewProps.fontSize != newViewProps.fontSize) {
@@ -448,6 +547,7 @@ using namespace facebook::react;
             if (_currentVerticalAlignment) {
                 [self updateVerticalAlignment:_currentVerticalAlignment];
             }
+            [self layoutPlaceholder];
             
             _isUpdatingText = NO;
         }
@@ -474,6 +574,81 @@ using namespace facebook::react;
         [self applyCharacterBackgrounds];
     }
 
+    if (oldViewProps.placeholder != newViewProps.placeholder) {
+        _placeholderLabel.text = [[NSString alloc] initWithUTF8String: newViewProps.placeholder.c_str()];
+        [self updatePlaceholderStyle];
+    }
+
+    if (oldViewProps.placeholderTextColor != newViewProps.placeholderTextColor) {
+        NSString *colorStr = [[NSString alloc] initWithUTF8String: newViewProps.placeholderTextColor.c_str()];
+        UIColor *color = colorStr.length > 0 ? [self hexStringToColor:colorStr] : nil;
+        _placeholderLabel.textColor = color ?: [UIColor placeholderTextColor];
+    }
+
+    if (oldViewProps.maxLength != newViewProps.maxLength) {
+        _maxLength = newViewProps.maxLength;
+    }
+
+    if (oldViewProps.autoCapitalize != newViewProps.autoCapitalize) {
+        NSString *value = [[NSString alloc] initWithUTF8String: newViewProps.autoCapitalize.c_str()];
+        UITextAutocapitalizationType type = UITextAutocapitalizationTypeSentences; // UITextView default
+        if ([value isEqualToString:@"none"]) {
+            type = UITextAutocapitalizationTypeNone;
+        } else if ([value isEqualToString:@"words"]) {
+            type = UITextAutocapitalizationTypeWords;
+        } else if ([value isEqualToString:@"characters"]) {
+            type = UITextAutocapitalizationTypeAllCharacters;
+        }
+        _textView.autocapitalizationType = type;
+        [self reloadKeyboardIfNeeded];
+    }
+
+    if (oldViewProps.keyboardType != newViewProps.keyboardType) {
+        NSString *value = [[NSString alloc] initWithUTF8String: newViewProps.keyboardType.c_str()];
+        static NSDictionary<NSString *, NSNumber *> *keyboardTypes;
+        static dispatch_once_t onceToken;
+        dispatch_once(&onceToken, ^{
+            keyboardTypes = @{
+                @"default": @(UIKeyboardTypeDefault),
+                @"email-address": @(UIKeyboardTypeEmailAddress),
+                @"numeric": @(UIKeyboardTypeDecimalPad),
+                @"phone-pad": @(UIKeyboardTypePhonePad),
+                @"number-pad": @(UIKeyboardTypeNumberPad),
+                @"decimal-pad": @(UIKeyboardTypeDecimalPad),
+                @"url": @(UIKeyboardTypeURL),
+                @"ascii-capable": @(UIKeyboardTypeASCIICapable),
+                @"numbers-and-punctuation": @(UIKeyboardTypeNumbersAndPunctuation),
+                @"visible-password": @(UIKeyboardTypeASCIICapable),
+            };
+        });
+        NSNumber *type = keyboardTypes[value];
+        _textView.keyboardType = type ? (UIKeyboardType)type.integerValue : UIKeyboardTypeDefault;
+        [self reloadKeyboardIfNeeded];
+    }
+
+    if (oldViewProps.returnKeyType != newViewProps.returnKeyType) {
+        NSString *value = [[NSString alloc] initWithUTF8String: newViewProps.returnKeyType.c_str()];
+        static NSDictionary<NSString *, NSNumber *> *returnKeyTypes;
+        static dispatch_once_t onceToken;
+        dispatch_once(&onceToken, ^{
+            returnKeyTypes = @{
+                @"done": @(UIReturnKeyDone),
+                @"go": @(UIReturnKeyGo),
+                @"next": @(UIReturnKeyNext),
+                @"search": @(UIReturnKeySearch),
+                @"send": @(UIReturnKeySend),
+                @"join": @(UIReturnKeyJoin),
+                @"route": @(UIReturnKeyRoute),
+                @"previous": @(UIReturnKeyDefault),
+                @"none": @(UIReturnKeyDefault),
+            };
+        });
+        NSNumber *type = returnKeyTypes[value];
+        _textView.returnKeyType = type ? (UIReturnKeyType)type.integerValue : UIReturnKeyDefault;
+        _submitOnReturn = value.length > 0 && ![value isEqualToString:@"default"];
+        [self reloadKeyboardIfNeeded];
+    }
+
     [super updateProps:props oldProps:oldProps];
 }
 
@@ -482,9 +657,128 @@ Class<RCTComponentViewProtocol> HighlightTextViewCls(void)
     return HighlightTextView.class;
 }
 
+- (void)handleCommand:(const NSString *)commandName args:(const NSArray *)args
+{
+    RCTHighlightTextViewHandleCommand(self, commandName, args);
+}
+
+- (void)focus
+{
+    if (_textView.isEditable) {
+        [_textView becomeFirstResponder];
+    }
+}
+
+- (void)blur
+{
+    [_textView resignFirstResponder];
+}
+
+- (void)clear
+{
+    [self setTextValue:@""];
+}
+
+- (void)setTextValue:(NSString *)text
+{
+    NSString *newText = text ?: @"";
+    if (![_textView.text isEqualToString:newText]) {
+        _isUpdatingText = YES;
+        _textView.text = newText;
+        [self applyCharacterBackgrounds];
+        if (_currentVerticalAlignment) {
+            [self updateVerticalAlignment:_currentVerticalAlignment];
+        }
+        [self layoutPlaceholder];
+        _isUpdatingText = NO;
+    }
+    // Report the new text so a controlled `text` prop can follow it
+    [self emitChange:newText];
+}
+
+- (void)emitChange:(NSString *)text
+{
+    if (_eventEmitter != nullptr) {
+        std::dynamic_pointer_cast<const HighlightTextViewEventEmitter>(_eventEmitter)
+            ->onChange(HighlightTextViewEventEmitter::OnChange{
+                .text = std::string([text UTF8String] ?: "")
+            });
+    }
+}
+
+- (BOOL)textView:(UITextView *)textView shouldChangeTextInRange:(NSRange)range replacementText:(NSString *)text
+{
+    if (_submitOnReturn && [text isEqualToString:@"\n"]) {
+        if (_eventEmitter != nullptr) {
+            std::dynamic_pointer_cast<const HighlightTextViewEventEmitter>(_eventEmitter)
+                ->onSubmitEditing(HighlightTextViewEventEmitter::OnSubmitEditing{
+                    .text = std::string([textView.text UTF8String] ?: "")
+                });
+        }
+        return NO;
+    }
+
+    if (_maxLength >= 0 && textView.markedTextRange == nil) {
+        NSUInteger keptLength = textView.text.length - range.length;
+        if (keptLength + text.length > (NSUInteger)_maxLength) {
+            NSInteger allowed = _maxLength - (NSInteger)keptLength;
+            if (allowed > 0 && text.length > 0) {
+                // Insert as much as fits, without splitting a composed character
+                NSRange fit = [text rangeOfComposedCharacterSequencesForRange:NSMakeRange(0, allowed)];
+                while (fit.length > (NSUInteger)allowed && fit.length > 0) {
+                    NSRange last = [text rangeOfComposedCharacterSequenceAtIndex:fit.length - 1];
+                    fit.length = last.location;
+                }
+                if (fit.length > 0) {
+                    UITextPosition *start = [textView positionFromPosition:textView.beginningOfDocument offset:range.location];
+                    UITextPosition *end = start ? [textView positionFromPosition:start offset:range.length] : nil;
+                    if (start && end) {
+                        [textView replaceRange:[textView textRangeFromPosition:start toPosition:end]
+                                      withText:[text substringWithRange:fit]];
+                    }
+                }
+            }
+            return NO;
+        }
+    }
+    return YES;
+}
+
+- (void)textViewDidBeginEditing:(UITextView *)textView
+{
+    if (_eventEmitter != nullptr) {
+        std::dynamic_pointer_cast<const HighlightTextViewEventEmitter>(_eventEmitter)
+            ->onFocus(HighlightTextViewEventEmitter::OnFocus{
+                .target = (int)self.tag
+            });
+    }
+}
+
+- (void)textViewDidEndEditing:(UITextView *)textView
+{
+    if (_eventEmitter != nullptr) {
+        std::dynamic_pointer_cast<const HighlightTextViewEventEmitter>(_eventEmitter)
+            ->onBlur(HighlightTextViewEventEmitter::OnBlur{
+                .target = (int)self.tag
+            });
+    }
+}
+
+- (void)textViewDidChangeSelection:(UITextView *)textView
+{
+    if (_eventEmitter != nullptr) {
+        NSRange selected = textView.selectedRange;
+        HighlightTextViewEventEmitter::OnSelectionChange event{};
+        event.selection.start = (int)selected.location;
+        event.selection.end = (int)(selected.location + selected.length);
+        std::dynamic_pointer_cast<const HighlightTextViewEventEmitter>(_eventEmitter)->onSelectionChange(event);
+    }
+}
+
 - (void)textViewDidChange:(UITextView *)textView
 {
     [self applyCharacterBackgrounds];
+    [self layoutPlaceholder];
     
     // Recalculate vertical alignment when text changes
     if (_currentVerticalAlignment) {
@@ -553,6 +847,19 @@ Class<RCTComponentViewProtocol> HighlightTextViewCls(void)
     
     _textView.font = newFont;
     [self applyCharacterBackgrounds];
+
+    // Font metrics (ascender/descender, line height) changed: re-measure so the
+    // highlight, vertical alignment and placeholder follow the new font without
+    // the view having to be remounted (the old `key={fontFamily}` workaround).
+    [_textView.layoutManager invalidateLayoutForCharacterRange:NSMakeRange(0, _textView.textStorage.length)
+                                          actualCharacterRange:NULL];
+    [_textView.layoutManager ensureLayoutForTextContainer:_textView.textContainer];
+    if (_currentVerticalAlignment) {
+        [self updateVerticalAlignment:_currentVerticalAlignment];
+    }
+    [self updatePlaceholderStyle];
+    [_textView setNeedsDisplay];
+    [self setNeedsLayout];
 }
 
 - (void)applyCharacterBackgrounds
@@ -630,8 +937,10 @@ Class<RCTComponentViewProtocol> HighlightTextViewCls(void)
     int r = (hex >> 16) & 0xFF;
     int g = (hex >> 8) & 0xFF;
     int b = (hex) & 0xFF;
+    // 8 digits = #AARRGGBB (same as Android's Color.parseColor); 6 digits stay opaque
+    CGFloat alpha = noHashString.length == 8 ? ((hex >> 24) & 0xFF) / 255.0f : 1.0f;
 
-    return [UIColor colorWithRed:r / 255.0f green:g / 255.0f blue:b / 255.0f alpha:1.0f];
+    return [UIColor colorWithRed:r / 255.0f green:g / 255.0f blue:b / 255.0f alpha:alpha];
 }
 
 @end
