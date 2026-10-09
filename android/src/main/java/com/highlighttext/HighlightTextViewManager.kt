@@ -72,8 +72,12 @@ class HighlightTextViewManager : SimpleViewManager<HighlightTextView>(),
       ?.dispatchEvent(HighlightTextEvent(surfaceId, view.id, eventName, Arguments.createMap().apply(data)))
   }
 
+  // React Native 0.81+ attaches its own focus listener (BaseViewManager) to every view and
+  // dispatches topFocus/topBlur from it; older versions attach none and this view never sets
+  // one itself. Check for any listener instead of its class name, which R8 renames in
+  // minified release builds (that caused duplicate onFocus/onBlur events).
   private fun hasBuiltInFocusEvents(view: HighlightTextView): Boolean =
-    view.onFocusChangeListener?.javaClass?.name?.contains("BaseVMFocusChangeListener") == true
+    view.onFocusChangeListener != null
 
   override fun getExportedCustomDirectEventTypeConstants(): MutableMap<String, Any> {
     val constants = super.getExportedCustomDirectEventTypeConstants() ?: mutableMapOf()
